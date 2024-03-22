@@ -1,2 +1,3 @@
-# daikin-ha-ekrhh-modbus
-Modbus connector for the ekrhh home hub
+# Daikin EKRHH Modbus for Home Assistant
+
+## Installation

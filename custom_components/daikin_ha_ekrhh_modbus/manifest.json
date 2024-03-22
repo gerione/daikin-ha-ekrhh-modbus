@@ -1,0 +1,11 @@
+{
+  "codeowners": ["@gerione"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/gerione/daikin-ha-ekrhh-modbus",
+  "domain": "daikin_ha_ekrhh_modbus",
+  "iot_class": "local_polling",
+  "name": "Daikin EKRHH Modbus",
+  "requirements": ["pymodbus==3.6.6"],
+  "version": "0.0.1"
+}
