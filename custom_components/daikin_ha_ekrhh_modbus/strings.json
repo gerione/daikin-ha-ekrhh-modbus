@@ -1,0 +1,23 @@
+{
+    "config": {
+      "flow_title": "Daikin EKRHH Modbus",
+      "step": {
+        "user": {
+          "title": "Define your Daikin222 EKRHH modbus connection",
+          "data": {
+            "host": "The ip-address of your Daikin EKRHH device",
+            "name": "The prefix to be used for your Daikin EKRHH sensors",
+            "port": "The TCP port on which to connect to the Daikin EKRHH",
+            "modbus_address": "The modbus address",
+            "scan_interval": "The modbus registers polling interval [s]"
+          }
+        }
+      },
+      "error": {
+        "already_configured": "Device is already configured"
+      },
+      "abort": {
+        "already_configured": "Device is already configured"
+      }
+    }
+  }
