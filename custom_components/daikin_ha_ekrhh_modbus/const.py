@@ -2,7 +2,7 @@ DOMAIN = "daikin_ha_ekrhh_modbus"
 
 DEFAULT_NAME = "daikin_ekrhh"
 DEFAULT_SCAN_INTERVAL = 30
-DEFAULT_PORT = 802
+DEFAULT_PORT = 502
 DEFAULT_MODBUS_ADDRESS = 1
 
 CONF_MODBUS_ADDRESS = "modbus_address"
@@ -11,31 +11,66 @@ ATTR_STATUS_DESCRIPTION = "status_description"
 ATTR_MANUFACTURER = "Daikin"
 
 SENSOR_TYPES = {
-    "AC_Current": [
-        "Leaving water Main Heating setpoint",
-        "leave_water_heating_setpoint",
-        "A",
-        "mdi:temperature-celsius",
-    ],
-    "AC_CurrentA": [
-        "Leaving water Main Cooling setpoint",
-        "leave_water_cooling_setpoint",
-        "A",
-        "mdi:temperature-celsius",
-    ],
-    "AC_CurrentB": ["Operation mode", "op_mode", "A", None],
-    "AC_CurrentC": [
-        "Space heating/cooling ON/OFF",
-        "space_heating_on_off",
-        "A",
-        None,
-    ],
-    "AC_VoltageAB": [
-        "Room thermostat control Heating setpoint",
-        "room_thermo_setpoint",
-        "V",
-        "mdi:temperature-celsius",
-    ],
+    "H1": ["Leaving water Main Heating setpoint","leave_water_heating_setpoint","°C","mdi:temperature-celsius",],
+    "H2": ["Leaving water Main Cooling setpoint","leave_water_cooling_setpoint","°C","mdi:temperature-celsius",],
+    "H3": ["Operation mode", "op_mode", None, None],
+    "H4": ["Space heating/cooling ON/OFF","space_heating_on_off",None,None,],
+    "H6": ["Room thermostat control Heating setpoint","room_thermo_setpoint_heating","°C","mdi:temperature-celsius",],
+    "H7": ["Room thermostat control Cooling setpoint","room_thermo_setpoint_cooling","°C","mdi:temperature-celsius",],
+    "H9": ["Quiet mode operation","quiet_mode_operation","","mdi:volume-quiet",],
+    "H10": ["DHW reheat setpoint","DHW_reheat_setpoint","°C","mdi:temperature-celsius",],
+    "H12": ["DHW reheat ON/OF","DHW_reheat_ON_OFF",None,None,],
+    "H13": ["DHW booster mode ON/OFF","DHW_booster_mode_ON_OFF",None,None,],
+    "H53": ["Weather dependent mode Main","Weather_dependent_mode_Main",None,None,],
+    "H54": ["Weather dependent mode Main LWT Heating setpoint offset","Weather_dependent_mode_main_setpoint_offset","°C","mdi:temperature-celsius",],
+    "H55": ["Weather dependent mode Main LWT Cooling setpoint offset","Weather_dependent_mode_cooling_setpoint_offset","°C","mdi:temperature-celsius",],
+    "H56": ["Smart Grid operation mode","Smart_Grid_operation_mode",None,None,],
+    "H57": ["Power limit during Recommended on / buffering","Power_limit_during_Recommended_on_buffering","kW","mdi:lightning-bolt",],
+    "H58": ["General power limit","General_power_limit","kW","mdi:lightning-bolt",],
+    "H59": ["Thermostat Main Input A","Thermostat_Main_Input_A","°C","mdi:temperature-celsius",],
+    "H61": ["Thermostat Add Input A","Thermostat_Add_Input_A","°C","mdi:temperature-celsius",],
+    "H63": ["Leaving water Add Heating setpoint","Leaving_water_Add_Heating_setpoint","°C","mdi:temperature-celsius",],
+    "H64": ["Leaving water Add Cooling setpoint","Leaving_water_Add_Cooling_setpoint","°C","mdi:temperature-celsius",],
+    "H65": ["Weather dependent mode Add","Weather_dependent_mode_Add",None,None,],
+    "H66": ["Weather dependent mode Add LWT Heating setpoint offset","Weather_dependent_mode_Add_LWT_Heating_setpoint_offset","°C","mdi:temperature-celsius",],
+    "H67": ["Weather dependent mode Add LWT Cooling setpoint offset","Weather_dependent_mode_Add_LWT_Cooling_setpoint_offset","°C","mdi:temperature-celsius",],
+
+    "I21": ["Unit error","Unit error",None,"mdi:alert-circle",],
+    "I22": ["Unit error code","Unit error code",None,"mdi:alert-circle",],
+    "I23": ["Unit error sub code","Unit error sub code",None,"mdi:alert-circle",],
+    "I30": ["Circulation pump running","Circulation pump running",None,"mdi:pump",],
+    "I31": ["Compressor run","Compressor run",None,"mdi:heat-pump-outline",],
+
+    "I32": ["Booster heater run","Booster heater run",None,"mdi:water-boiler",],
+    "I33": ["Disinfection operation","Disinfection operation",None,"mdi:spray",],
+    "I35": ["Defrost/Startup","Defrost/Startup",None,"mdi:snowflake-melt",],
+    "I36": ["Hot Start","Hot Start",None, None,],
+    "I37": ["3-way valve","3-way valve",None,"mdi:pipe-valve",],
+
+    "I38": ["Operation mode","Operation mode",None, None, ],
+    "I40": ["Leaving water temperature PHE","Leaving water temperature PHE","°C","mdi:temperature-celsius",],
+    "I41": ["Leaving water temperature BUH","Leaving water temperature BUH","°C","mdi:temperature-celsius",],
+    "I42": ["Return water temperature","Return water temperature","°C","mdi:temperature-celsius",],
+    "I43": ["Domestic Hot Water temperature","Domestic Hot Water temperature","°C","mdi:temperature-celsius",],
+
+    "I44": ["Outside air temperature","Outside air temperature","°C","mdi:temperature-celsius",],
+    "I45": ["Liquid refrigerant temperature","Liquid refrigerant temperature","°C","mdi:temperature-celsius",],
+    "I49": ["Flow rate","Flow rate","L/min","mdi:waves",],
+    "I50": ["Remote controller room temperature","Remote controller room temperature","°C","mdi:temperature-celsius",],
+    "I51": ["Heat pump power consumption","Heat pump power consumption","kW","mdi:lightning-bolt",],
+
+    "I52": ["DHW normal operation","DHW normal operation",None, None,],
+    "I53": ["Space heating/cooling normal operation","Space heating/cooling normal operation",None, None,],
+    "I54": ["Leaving water Main Heating setpoint Lower limit","Leaving water Main Heating setpoint Lower limit","°C","mdi:temperature-celsius",],
+    "I55": ["Leaving water Main Heating setpoint Upper limit","Leaving water Main Heating setpoint Upper limit","°C","mdi:temperature-celsius",],
+    "I56": ["Leaving water Main Coolin setpoint Lower limit","Leaving water Main Coolin setpoint Lower limit","°C","mdi:temperature-celsius",],
+
+    "I57": ["Leaving water Main Cooling setpoint Upper limit","Leaving water Main Cooling setpoint Upper limit","°C","mdi:temperature-celsius",],
+    "I58": ["Leaving water Add Heating setpoint Lower limit","Leaving water Add Heating setpoint Lower limit","°C","mdi:temperature-celsius",],
+    "I59": ["Leaving water Add Heating setpoint Upper limit","Leaving water Add Heating setpoint Upper limit","°C","mdi:temperature-celsius",],
+    "I60": ["Leaving water Add Cooling setpoint Lower limit","Leaving water Add Cooling setpoint Lower limit","°C","mdi:temperature-celsius",],
+    "I61": ["Leaving water Add Cooling setpoint Upper limit","Leaving water Add Cooling setpoint Upper limit","°C","mdi:temperature-celsius",],
+
 }
 
 
@@ -49,3 +84,16 @@ DEVICE_STATUSSES = {
     7: "Fault",
     8: "Maintenance/setup",
 }
+
+
+STOREDGE_CONTROL_MODE = {
+    0: "Disabled",
+    1: "Maximize Self Consumption",
+    2: "Time of Use",
+    3: "Backup Only",
+    4: "Remote Control",
+}
+
+STORAGE_SELECT_TYPES = [
+    ["Storage Control Mode", "op_mode", 0xE004, STOREDGE_CONTROL_MODE],
+]

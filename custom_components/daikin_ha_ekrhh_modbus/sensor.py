@@ -9,7 +9,7 @@ from .const import (
 )
 from datetime import datetime
 from homeassistant.helpers.entity import Entity
-from homeassistant.const import CONF_NAME, UnitOfEnergy, UnitOfPower
+from homeassistant.const import CONF_NAME, UnitOfEnergy, UnitOfPower, UnitOfTemperature, UnitOfVolumeFlowRate
 from homeassistant.components.sensor import (
     PLATFORM_SCHEMA,
     SensorEntity,
@@ -63,11 +63,12 @@ class SolarEdgeSensor(SensorEntity):
         self._icon = icon
         self._device_info = device_info
         self._attr_state_class = SensorStateClass.MEASUREMENT
-        if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
-            self._attr_state_class = SensorStateClass.TOTAL_INCREASING
-            self._attr_device_class = SensorDeviceClass.ENERGY
         if self._unit_of_measurement == UnitOfPower.WATT:
             self._attr_device_class = SensorDeviceClass.POWER
+        elif self._unit_of_measurement == UnitOfTemperature.CELSIUS:
+            self._attr_device_class = SensorDeviceClass.TEMPERATURE
+        elif self._unit_of_measurement == UnitOfVolumeFlowRate.LITERS_PER_MINUTE:
+            self._attr_device_class = SensorDeviceClass.VOLUME_FLOW_RATE
 
     async def async_added_to_hass(self):
         """Register callbacks."""
