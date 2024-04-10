@@ -6,6 +6,6 @@
   "domain": "daikin_ha_ekrhh_modbus",
   "iot_class": "local_polling",
   "name": "Daikin EKRHH Modbus",
-  "requirements": ["pymodbus==3.6.6"],
+  "requirements": ["pymodbus==3.6.7"],
   "version": "0.0.1"
 }

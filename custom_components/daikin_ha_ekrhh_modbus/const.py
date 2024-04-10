@@ -27,13 +27,13 @@ SENSOR_TYPES = {
     "H56": ["Smart Grid operation mode","Smart_Grid_operation_mode",None,None,],
     "H57": ["Power limit during Recommended on / buffering","Power_limit_during_Recommended_on_buffering","kW","mdi:lightning-bolt",],
     "H58": ["General power limit","General_power_limit","kW","mdi:lightning-bolt",],
-    "H59": ["Thermostat Main Input A","Thermostat_Main_Input_A","°C","mdi:temperature-celsius",],
-    "H61": ["Thermostat Add Input A","Thermostat_Add_Input_A","°C","mdi:temperature-celsius",],
-    "H63": ["Leaving water Add Heating setpoint","Leaving_water_Add_Heating_setpoint","°C","mdi:temperature-celsius",],
-    "H64": ["Leaving water Add Cooling setpoint","Leaving_water_Add_Cooling_setpoint","°C","mdi:temperature-celsius",],
-    "H65": ["Weather dependent mode Add","Weather_dependent_mode_Add",None,None,],
-    "H66": ["Weather dependent mode Add LWT Heating setpoint offset","Weather_dependent_mode_Add_LWT_Heating_setpoint_offset","°C","mdi:temperature-celsius",],
-    "H67": ["Weather dependent mode Add LWT Cooling setpoint offset","Weather_dependent_mode_Add_LWT_Cooling_setpoint_offset","°C","mdi:temperature-celsius",],
+    "H59": ["Thermostat Main Input A","Thermostat_Main_Input_A",None,None,],
+#    "H61": ["Thermostat Add Input A","Thermostat_Add_Input_A",None,None,],
+#    "H63": ["Leaving water Add Heating setpoint","Leaving_water_Add_Heating_setpoint","°C","mdi:temperature-celsius",],
+#    "H64": ["Leaving water Add Cooling setpoint","Leaving_water_Add_Cooling_setpoint","°C","mdi:temperature-celsius",],
+#    "H65": ["Weather dependent mode Add","Weather_dependent_mode_Add",None,None,],
+#    "H66": ["Weather dependent mode Add LWT Heating setpoint offset","Weather_dependent_mode_Add_LWT_Heating_setpoint_offset","°C","mdi:temperature-celsius",],
+#    "H67": ["Weather dependent mode Add LWT Cooling setpoint offset","Weather_dependent_mode_Add_LWT_Cooling_setpoint_offset","°C","mdi:temperature-celsius",],
 
     "I21": ["Unit error","Unit error",None,"mdi:alert-circle",],
     "I22": ["Unit error code","Unit error code",None,"mdi:alert-circle",],
@@ -47,7 +47,7 @@ SENSOR_TYPES = {
     "I36": ["Hot Start","Hot Start",None, None,],
     "I37": ["3-way valve","3-way valve",None,"mdi:pipe-valve",],
 
-    "I38": ["Operation mode","Operation mode",None, None, ],
+    "I38": ["Operation mode read","Operation mode",None, None, ],
     "I40": ["Leaving water temperature PHE","Leaving water temperature PHE","°C","mdi:temperature-celsius",],
     "I41": ["Leaving water temperature BUH","Leaving water temperature BUH","°C","mdi:temperature-celsius",],
     "I42": ["Return water temperature","Return water temperature","°C","mdi:temperature-celsius",],
@@ -76,7 +76,7 @@ SENSOR_TYPES = {
 
 DEVICE_STATUSSES = {
     1: "Off",
-    2: "Sleeping (auto-shutdown) – Night mode",
+    2: "Sleeping (auto-shutdown) / Night mode",
     3: "Grid Monitoring/wake-up",
     4: "Inverter is ON and producing power",
     5: "Production (curtailed)",
@@ -86,14 +86,40 @@ DEVICE_STATUSSES = {
 }
 
 
-STOREDGE_CONTROL_MODE = {
-    0: "Disabled",
-    1: "Maximize Self Consumption",
-    2: "Time of Use",
-    3: "Backup Only",
-    4: "Remote Control",
+DAIKIN_OP_MODE_OPTIONS = {
+    0: "Auto",
+    1: "Heating",
+    2: "Cooling",
 }
 
-STORAGE_SELECT_TYPES = [
-    ["Storage Control Mode", "op_mode", 0xE004, STOREDGE_CONTROL_MODE],
+DAIKIN_SG_MODE_OPTIONS = {
+    0: "Free",
+    1: "Forced off",
+    2: "Recommended on",
+    3: "Forced on",
+}
+
+DAIKIN_ON_OFF_OPTIONS = {
+    0: "Off",
+    1: "On",
+}
+
+DAIKIN_WEATHER_DEPENDEND_OPTIONS = {
+    0: "Fixed",
+    1: "Weather dependent",
+    2: "Fixed + scheduled",
+    3: "Weather dependent + scheduled",
+}
+
+DAIKIN_SELECT_TYPES = [
+    ["Operation mode", "op_mode", 2, DAIKIN_OP_MODE_OPTIONS],
+    ["Space heating / cooling", "space_heating_on_off", 3, DAIKIN_ON_OFF_OPTIONS],
+    ["Quiet mode operation", "quiet_mode_operation", 8, DAIKIN_ON_OFF_OPTIONS],
+    ["DHW reheat ON/OFF", "DHW_reheat_ON_OFF", 11, DAIKIN_ON_OFF_OPTIONS],
+    ["DHW booster mode ON/OFF", "DHW_booster_mode_ON_OFF", 12, DAIKIN_ON_OFF_OPTIONS],
+    ["Weather dependent mode Main", "Weather_dependent_mode_Main", 52, DAIKIN_WEATHER_DEPENDEND_OPTIONS],
+    ["Smart grid", "Smart_Grid_operation_mode", 55, DAIKIN_SG_MODE_OPTIONS],
+    ["Thermostat Main Input A", "Thermostat_Main_Input_A", 58, DAIKIN_ON_OFF_OPTIONS],
+#   ["Thermostat Add Input A", "Thermostat_Add_Input_A", 60, DAIKIN_ON_OFF_OPTIONS],
+#    ["Weather dependent mode Add", "Weather_dependent_mode_Add", 64, DAIKIN_WEATHER_DEPENDEND_OPTIONS],
 ]

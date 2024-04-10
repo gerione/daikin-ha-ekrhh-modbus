@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any
 from .const import (
     DOMAIN,
     ATTR_MANUFACTURER,
-    STORAGE_SELECT_TYPES,
+    DAIKIN_SELECT_TYPES,
 )
 
 from homeassistant.const import CONF_NAME
@@ -30,7 +30,7 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
 
     entities = []
 
-    for select_info in STORAGE_SELECT_TYPES:
+    for select_info in DAIKIN_SELECT_TYPES:
         select = DaikinHAEKRHHModbusSelect(
             hub_name,
             hub,
@@ -88,7 +88,7 @@ class DaikinHAEKRHHModbusSelect(SelectEntity):
 
     @property
     def unique_id(self) -> Optional[str]:
-        return f"{self._platform_name}_{self._key}"
+        return f"{self._platform_name}_{self._key}1234"
 
     @property
     def should_poll(self) -> bool:
@@ -98,7 +98,7 @@ class DaikinHAEKRHHModbusSelect(SelectEntity):
     @property
     def current_option(self) -> str:
         if self._key in self._hub.data:
-            return self._hub.data[self._key]
+            return self.options[self._hub.data[self._key]]
 
 
     def get_options(self):
@@ -107,7 +107,11 @@ class DaikinHAEKRHHModbusSelect(SelectEntity):
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
         new_mode = get_key(self._option_dict, option)
-        self._hub.write_registers(unit=1, address=self._register, payload=new_mode)
-
-        self._hub.data[self._key] = option
+        result = self._hub.write_registers(unit=1, address=self._register, payload=new_mode)
+        if not result.isError():
+            self._hub.data[self._key] = new_mode
         self.async_write_ha_state()
+
+    @property
+    def device_info(self) -> Optional[Dict[str, Any]]:
+        return self._device_info

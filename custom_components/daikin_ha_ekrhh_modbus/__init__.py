@@ -28,7 +28,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-PLATFORMS = ["sensor"]
+PLATFORMS = ["sensor", "select"]
 # PLATFORMS = ["number", "select", "sensor"]
 
 
@@ -57,9 +57,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data[DOMAIN][name] = {"hub": hub}
 
     for component in PLATFORMS:
-        hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(entry, component)
-        )
+        hass.async_create_task(hass.config_entries.async_forward_entry_setup(entry, component))
     return True
 
 
@@ -248,7 +246,7 @@ class SolaredgeModbusHub:
         decoder.skip_bytes(2)
         self.data["DHW_reheat_ON_OFF"] = decoder.decode_16bit_int()
         self.data["DHW_booster_mode_ON_OFF"] = decoder.decode_16bit_int()
-        decoder.skip_bytes(10 * 2)
+        decoder.skip_bytes(39 * 2)
         self.data["Weather_dependent_mode_Main"] = decoder.decode_16bit_int()
         self.data["Weather_dependent_mode_main_setpoint_offset"] = (
             decoder.decode_16bit_int()

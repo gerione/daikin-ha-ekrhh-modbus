@@ -89,7 +89,7 @@ class SolarEdgeSensor(SensorEntity):
     @property
     def name(self):
         """Return the name."""
-        return f"{self._platform_name} ({self._name})"
+        return f"{self._platform_name} {self._name}"
 
     @property
     def unique_id(self) -> Optional[str]:
