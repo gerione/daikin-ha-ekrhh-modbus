@@ -4,9 +4,9 @@ DEFAULT_NAME = "daikin_ekrhh"
 DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_PORT = 502
 DEFAULT_MODBUS_ADDRESS = 1
-
+DEFAULT_ADDITIONAL_ZONE=False
 CONF_MODBUS_ADDRESS = "modbus_address"
-
+CONF_ADDITIONAL_ZONE = "additional_zone"
 ATTR_STATUS_DESCRIPTION = "status_description"
 ATTR_MANUFACTURER = "Daikin"
 
@@ -28,12 +28,7 @@ SENSOR_TYPES = {
     "H57": ["Power limit during Recommended on / buffering","Power_limit_during_Recommended_on_buffering","kW","mdi:lightning-bolt",],
     "H58": ["General power limit","General_power_limit","kW","mdi:lightning-bolt",],
     "H59": ["Thermostat Main Input A","Thermostat_Main_Input_A",None,None,],
-#    "H61": ["Thermostat Add Input A","Thermostat_Add_Input_A",None,None,],
-#    "H63": ["Leaving water Add Heating setpoint","Leaving_water_Add_Heating_setpoint","°C","mdi:temperature-celsius",],
-#    "H64": ["Leaving water Add Cooling setpoint","Leaving_water_Add_Cooling_setpoint","°C","mdi:temperature-celsius",],
-#    "H65": ["Weather dependent mode Add","Weather_dependent_mode_Add",None,None,],
-#    "H66": ["Weather dependent mode Add LWT Heating setpoint offset","Weather_dependent_mode_Add_LWT_Heating_setpoint_offset","°C","mdi:temperature-celsius",],
-#    "H67": ["Weather dependent mode Add LWT Cooling setpoint offset","Weather_dependent_mode_Add_LWT_Cooling_setpoint_offset","°C","mdi:temperature-celsius",],
+
 
     "I21": ["Unit error","Unit error",None,"mdi:alert-circle",],
     "I22": ["Unit error code","Unit error code",None,"mdi:alert-circle",],
@@ -63,14 +58,23 @@ SENSOR_TYPES = {
     "I53": ["Space heating/cooling normal operation","Space heating/cooling normal operation",None, None,],
     "I54": ["Leaving water Main Heating setpoint Lower limit","Leaving water Main Heating setpoint Lower limit","°C","mdi:temperature-celsius",],
     "I55": ["Leaving water Main Heating setpoint Upper limit","Leaving water Main Heating setpoint Upper limit","°C","mdi:temperature-celsius",],
-    "I56": ["Leaving water Main Coolin setpoint Lower limit","Leaving water Main Coolin setpoint Lower limit","°C","mdi:temperature-celsius",],
+    "I56": ["Leaving water Main Cooling setpoint Lower limit","Leaving water Main Cooling setpoint Lower limit","°C","mdi:temperature-celsius",],
 
     "I57": ["Leaving water Main Cooling setpoint Upper limit","Leaving water Main Cooling setpoint Upper limit","°C","mdi:temperature-celsius",],
+}
+
+ADDITIONAL_ZONE_SENSOR_TYPES = {
+    "H61": ["Thermostat Add Input A","Thermostat_Add_Input_A",None,None,],
+    "H63": ["Leaving water Add Heating setpoint","Leaving_water_Add_Heating_setpoint","°C","mdi:temperature-celsius",],
+    "H64": ["Leaving water Add Cooling setpoint","Leaving_water_Add_Cooling_setpoint","°C","mdi:temperature-celsius",],
+    "H65": ["Weather dependent mode Add","Weather_dependent_mode_Add",None,None,],
+    "H66": ["Weather dependent mode Add LWT Heating setpoint offset","Weather_dependent_mode_Add_LWT_Heating_setpoint_offset","°C","mdi:temperature-celsius",],
+    "H67": ["Weather dependent mode Add LWT Cooling setpoint offset","Weather_dependent_mode_Add_LWT_Cooling_setpoint_offset","°C","mdi:temperature-celsius",],
+
     "I58": ["Leaving water Add Heating setpoint Lower limit","Leaving water Add Heating setpoint Lower limit","°C","mdi:temperature-celsius",],
     "I59": ["Leaving water Add Heating setpoint Upper limit","Leaving water Add Heating setpoint Upper limit","°C","mdi:temperature-celsius",],
     "I60": ["Leaving water Add Cooling setpoint Lower limit","Leaving water Add Cooling setpoint Lower limit","°C","mdi:temperature-celsius",],
     "I61": ["Leaving water Add Cooling setpoint Upper limit","Leaving water Add Cooling setpoint Upper limit","°C","mdi:temperature-celsius",],
-
 }
 
 
@@ -120,6 +124,25 @@ DAIKIN_SELECT_TYPES = [
     ["Weather dependent mode Main", "Weather_dependent_mode_Main", 52, DAIKIN_WEATHER_DEPENDEND_OPTIONS],
     ["Smart grid", "Smart_Grid_operation_mode", 55, DAIKIN_SG_MODE_OPTIONS],
     ["Thermostat Main Input A", "Thermostat_Main_Input_A", 58, DAIKIN_ON_OFF_OPTIONS],
-#   ["Thermostat Add Input A", "Thermostat_Add_Input_A", 60, DAIKIN_ON_OFF_OPTIONS],
-#    ["Weather dependent mode Add", "Weather_dependent_mode_Add", 64, DAIKIN_WEATHER_DEPENDEND_OPTIONS],
+]
+
+DAIKIN_ADDITIONAL_ZONE_SELECT_TYPES = [
+    ["Thermostat Add Input A", "Thermostat_Add_Input_A", 60, DAIKIN_ON_OFF_OPTIONS],
+    ["Weather dependent mode Add", "Weather_dependent_mode_Add", 64, DAIKIN_WEATHER_DEPENDEND_OPTIONS],
+
+]
+
+DAIKIN_NUMBER_TYPES = [
+    ["Room thermostat control Heating setpoint", "room_thermo_setpoint_heating", 5, "u16", {"min": 12, "max": 30, "unit": "°C"}],
+    ["Room thermostat control Cooling setpoint", "room_thermo_setpoint_cooling", 6, "u16", {"min": 15, "max": 35, "unit": "°C"}],
+    ["DHW reheat setpoint", "DHW_reheat_setpoint", 9, "u16", {"min": 30, "max": 60, "unit": "°C"}],
+    ["Weather dependent mode Main LWT Heating setpoint offset", "Weather_dependent_mode_main_setpoint_offset", 53, "u16", {"min": -10, "max": 10, "unit": "°C"}],
+    ["Weather dependent mode Main LWT Cooling setpoint offset", "Weather_dependent_mode_cooling_setpoint_offset", 54, "u16", {"min": -10, "max": 10, "unit": "°C"}],
+    ["Power limit during Recommended on / buffering", "Power_limit_during_Recommended_on_buffering", 56, "pow", {"min": 0, "max": 20000, "unit": "W"}],
+    ["General power limit", "General_power_limit", 57, "pow", {"min": 0, "max": 20000, "unit": "W"}],
+]
+
+DAIKIN_ADDITIONAL_ZONE_NUMBER_TYPES = [
+    ["Weather dependent mode Add LWT Heating setpoint offset", "Weather_dependent_mode_Add_LWT_Heating_setpoint_offset", 65, "u16", {"min": -10, "max": 10, "unit": "°C"}],
+    ["Weather dependent mode Add LWT Cooling setpoint offset", "Weather_dependent_mode_Add_LWT_Cooling_setpoint_offset", 66, "u16", {"min": -10, "max": 10, "unit": "°C"}],
 ]

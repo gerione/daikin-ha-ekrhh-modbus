@@ -1,6 +1,7 @@
 import logging
 from typing import Optional, Dict, Any
 from .const import (
+    ADDITIONAL_ZONE_SENSOR_TYPES,
     SENSOR_TYPES,
     DOMAIN,
     ATTR_STATUS_DESCRIPTION,
@@ -35,7 +36,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     entities = []
     for sensor_info in SENSOR_TYPES.values():
-        sensor = SolarEdgeSensor(
+        sensor = DaikinEKRHHSensor(
             hub_name,
             hub,
             device_info,
@@ -45,13 +46,24 @@ async def async_setup_entry(hass, entry, async_add_entities):
             sensor_info[3],
         )
         entities.append(sensor)
-
+    if hub._additional_zone:
+        for sensor_info in ADDITIONAL_ZONE_SENSOR_TYPES.values():
+            sensor = DaikinEKRHHSensor(
+                hub_name,
+                hub,
+                device_info,
+                sensor_info[0],
+                sensor_info[1],
+                sensor_info[2],
+                sensor_info[3],
+            )
+            entities.append(sensor)
     async_add_entities(entities)
     return True
 
 
-class SolarEdgeSensor(SensorEntity):
-    """Representation of an SolarEdge Modbus sensor."""
+class DaikinEKRHHSensor(SensorEntity):
+    """Representation of an Daikin EKRHH Modbus sensor."""
 
     def __init__(self, platform_name, hub, device_info, name, key, unit, icon):
         """Initialize the sensor."""
@@ -63,7 +75,7 @@ class SolarEdgeSensor(SensorEntity):
         self._icon = icon
         self._device_info = device_info
         self._attr_state_class = SensorStateClass.MEASUREMENT
-        if self._unit_of_measurement == UnitOfPower.WATT:
+        if self._unit_of_measurement == UnitOfPower.WATT or self._unit_of_measurement == UnitOfPower.KILO_WATT:
             self._attr_device_class = SensorDeviceClass.POWER
         elif self._unit_of_measurement == UnitOfTemperature.CELSIUS:
             self._attr_device_class = SensorDeviceClass.TEMPERATURE
@@ -72,10 +84,10 @@ class SolarEdgeSensor(SensorEntity):
 
     async def async_added_to_hass(self):
         """Register callbacks."""
-        self._hub.async_add_solaredge_sensor(self._modbus_data_updated)
+        self._hub.async_add_daikin_ekrhh_sensor(self._modbus_data_updated)
 
     async def async_will_remove_from_hass(self) -> None:
-        self._hub.async_remove_solaredge_sensor(self._modbus_data_updated)
+        self._hub.async_remove_daikin_ekrhh_sensor(self._modbus_data_updated)
 
     @callback
     def _modbus_data_updated(self):

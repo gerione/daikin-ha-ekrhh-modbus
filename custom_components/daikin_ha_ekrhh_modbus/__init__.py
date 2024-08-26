@@ -23,12 +23,13 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_MODBUS_ADDRESS,
     CONF_MODBUS_ADDRESS,
+    CONF_ADDITIONAL_ZONE
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 
-PLATFORMS = ["sensor", "select"]
+PLATFORMS = ["number","sensor", "select"]
 # PLATFORMS = ["number", "select", "sensor"]
 
 
@@ -40,18 +41,20 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
-    """Set up a solaredge mobus."""
+    """Set up a daikin_ekrhh mobus."""
     host = entry.data[CONF_HOST]
     name = entry.data[CONF_NAME]
     port = entry.data[CONF_PORT]
     scan_interval = entry.data[CONF_SCAN_INTERVAL]
+    additional_zone = entry.data[CONF_ADDITIONAL_ZONE]
 
-    hub = SolaredgeModbusHub(
+    hub = DaikinEKRHHModbusHub(
         hass,
         name,
         host,
         port,
         scan_interval,
+        additional_zone
     )
 
     hass.data[DOMAIN][name] = {"hub": hub}
@@ -62,7 +65,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
 
 async def async_unload_entry(hass, entry):
-    """Unload Solaredge mobus entry."""
+    """Unload daikin_ekrhh mobus entry."""
     unload_ok = all(
         await asyncio.gather(
             *[
@@ -78,7 +81,7 @@ async def async_unload_entry(hass, entry):
     return True
 
 
-class SolaredgeModbusHub:
+class DaikinEKRHHModbusHub:
     """Thread safe wrapper class for pymodbus."""
 
     def __init__(
@@ -88,6 +91,7 @@ class SolaredgeModbusHub:
         host,
         port,
         scan_interval,
+        additional_zone
     ):
         """Initialize the Modbus hub."""
         self._hass = hass
@@ -97,12 +101,13 @@ class SolaredgeModbusHub:
         self._lock = threading.Lock()
         self._name = name
         self._scan_interval = timedelta(seconds=scan_interval)
+        self._additional_zone = additional_zone
         self._unsub_interval_method = None
         self._sensors = []
         self.data = {}
 
     @callback
-    def async_add_solaredge_sensor(self, update_callback):
+    def async_add_daikin_ekrhh_sensor(self, update_callback):
         """Listen for data updates."""
         # This is the first sensor, set up interval.
         if not self._sensors:
@@ -114,7 +119,7 @@ class SolaredgeModbusHub:
         self._sensors.append(update_callback)
 
     @callback
-    def async_remove_solaredge_sensor(self, update_callback):
+    def async_remove_daikin_ekrhh_sensor(self, update_callback):
         """Remove data update."""
         self._sensors.remove(update_callback)
 

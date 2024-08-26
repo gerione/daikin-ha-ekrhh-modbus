@@ -9,7 +9,8 @@
           "name": "The prefix to be used for your Daikin EKRHH sensors",
           "port": "The TCP port on which to connect to the Daikin EKRHH",
           "modbus_address": "The modbus address",
-          "scan_interval": "The modbus registers polling interval [s]"
+          "scan_interval": "The modbus registers polling interval [s]",
+          "additional_zone": "Is there an addtional heating zone present?"
         }
       }
     },

@@ -5,6 +5,7 @@ from .const import (
     DOMAIN,
     ATTR_MANUFACTURER,
     DAIKIN_SELECT_TYPES,
+    DAIKIN_ADDITIONAL_ZONE_SELECT_TYPES
 )
 
 from homeassistant.const import CONF_NAME
@@ -41,6 +42,21 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
             select_info[3],
         )
         entities.append(select)
+
+    if hub._additional_zone:
+        for select_info in DAIKIN_ADDITIONAL_ZONE_SELECT_TYPES:
+            select = DaikinHAEKRHHModbusSelect(
+                hub_name,
+                hub,
+                device_info,
+                select_info[0],
+                select_info[1],
+                select_info[2],
+                select_info[3],
+            )
+            entities.append(select)
+
+
     async_add_entities(entities)
 
     return True
@@ -54,7 +70,7 @@ def get_key(my_dict, search):
 
 
 class DaikinHAEKRHHModbusSelect(SelectEntity):
-    """Representation of an SolarEdge Modbus select."""
+    """Representation of an daikin_ekrhh Modbus select."""
 
     def __init__(
         self, platform_name, hub, device_info, name, key, register, options
@@ -72,10 +88,10 @@ class DaikinHAEKRHHModbusSelect(SelectEntity):
 
     async def async_added_to_hass(self) -> None:
         """Register callbacks."""
-        self._hub.async_add_solaredge_sensor(self._modbus_data_updated)
+        self._hub.async_add_daikin_ekrhh_sensor(self._modbus_data_updated)
 
     async def async_will_remove_from_hass(self) -> None:
-        self._hub.async_remove_solaredge_sensor(self._modbus_data_updated)
+        self._hub.async_remove_daikin_ekrhh_sensor(self._modbus_data_updated)
 
     @callback
     def _modbus_data_updated(self) -> None:
@@ -84,11 +100,11 @@ class DaikinHAEKRHHModbusSelect(SelectEntity):
     @property
     def name(self) -> str:
         """Return the name."""
-        return f"{self._platform_name} ({self._name})"
+        return f"{self._platform_name} {self._name}"
 
     @property
     def unique_id(self) -> Optional[str]:
-        return f"{self._platform_name}_{self._key}1234"
+        return f"{self._platform_name}_{self._key}"
 
     @property
     def should_poll(self) -> bool:
