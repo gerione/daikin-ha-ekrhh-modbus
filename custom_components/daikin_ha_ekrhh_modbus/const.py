@@ -133,16 +133,16 @@ DAIKIN_ADDITIONAL_ZONE_SELECT_TYPES = [
 ]
 
 DAIKIN_NUMBER_TYPES = [
-    ["Room thermostat control Heating setpoint", "room_thermo_setpoint_heating", 5, "u16", {"min": 12, "max": 30, "unit": "°C"}],
-    ["Room thermostat control Cooling setpoint", "room_thermo_setpoint_cooling", 6, "u16", {"min": 15, "max": 35, "unit": "°C"}],
-    ["DHW reheat setpoint", "DHW_reheat_setpoint", 9, "u16", {"min": 30, "max": 60, "unit": "°C"}],
-    ["Weather dependent mode Main LWT Heating setpoint offset", "Weather_dependent_mode_main_setpoint_offset", 53, "u16", {"min": -10, "max": 10, "unit": "°C"}],
-    ["Weather dependent mode Main LWT Cooling setpoint offset", "Weather_dependent_mode_cooling_setpoint_offset", 54, "u16", {"min": -10, "max": 10, "unit": "°C"}],
-    ["Power limit during Recommended on / buffering", "Power_limit_during_Recommended_on_buffering", 56, "pow", {"min": 0, "max": 20000, "unit": "W"}],
-    ["General power limit", "General_power_limit", 57, "pow", {"min": 0, "max": 20000, "unit": "W"}],
+    ["Room thermostat control Heating setpoint", "room_thermo_setpoint_heating", 5, "u16", {"min": 12, "max": 30, "step": 1, "unit": "°C"}],
+    ["Room thermostat control Cooling setpoint", "room_thermo_setpoint_cooling", 6, "u16", {"min": 15, "max": 35, "step": 1,"unit": "°C"}],
+    ["DHW reheat setpoint", "DHW_reheat_setpoint", 9, "u16", {"min": 30, "max": 60, "step": 1, "unit": "°C"}],
+    ["Weather dependent mode Main LWT Heating setpoint offset", "Weather_dependent_mode_main_setpoint_offset", 53, "u16", {"min": -10, "max": 10, "step": 1, "unit": "°C"}],
+    ["Weather dependent mode Main LWT Cooling setpoint offset", "Weather_dependent_mode_cooling_setpoint_offset", 54, "u16", {"min": -10, "max": 10, "step": 1, "unit": "°C"}],
+    ["Power limit during Recommended on / buffering", "Power_limit_during_Recommended_on_buffering", 56, "pow", {"min": 0, "max": 20, "step": 0.1,"unit": "kW"}],
+    ["General power limit", "General_power_limit", 57, "pow", {"min": 0, "max": 20, "step": 0.1,"unit": "kW"}],
 ]
 
 DAIKIN_ADDITIONAL_ZONE_NUMBER_TYPES = [
-    ["Weather dependent mode Add LWT Heating setpoint offset", "Weather_dependent_mode_Add_LWT_Heating_setpoint_offset", 65, "u16", {"min": -10, "max": 10, "unit": "°C"}],
-    ["Weather dependent mode Add LWT Cooling setpoint offset", "Weather_dependent_mode_Add_LWT_Cooling_setpoint_offset", 66, "u16", {"min": -10, "max": 10, "unit": "°C"}],
+    ["Weather dependent mode Add LWT Heating setpoint offset", "Weather_dependent_mode_Add_LWT_Heating_setpoint_offset", 65, "u16", {"min": -10, "max": 10, "step": 1, "unit": "°C"}],
+    ["Weather dependent mode Add LWT Cooling setpoint offset", "Weather_dependent_mode_Add_LWT_Cooling_setpoint_offset", 66, "u16", {"min": -10, "max": 10, "step": 1, "unit": "°C"}],
 ]

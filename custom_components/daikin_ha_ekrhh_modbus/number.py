@@ -44,7 +44,8 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
             number_info[3],
             dict(min=number_info[4]['min'],
                     max=number_info[4]['max'],
-                    unit=number_info[4]['unit']
+                    unit=number_info[4]['unit'],
+                    step=number_info[4]['step']
             )
         )
         entities.append(number)
@@ -61,7 +62,8 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
                 number_info[3],
                 dict(min=number_info[4]['min'],
                         max=number_info[4]['max'],
-                        unit=number_info[4]['unit']
+                        unit=number_info[4]['unit'],
+                        step=number_info[4]['step']
                 )
             )
             entities.append(number)
@@ -93,6 +95,7 @@ class DaikinEKRHHNumber(NumberEntity):
 
         self._attr_native_min_value = attrs["min"]
         self._attr_native_max_value = attrs["max"]
+        self._attr_native_step = attrs["step"]
         if "unit" in attrs.keys():
             self._attr_native_unit_of_measurement = attrs["unit"]
 
@@ -140,6 +143,8 @@ class DaikinEKRHHNumber(NumberEntity):
             builder.add_16bit_uint(int(value))
         elif self._fmt == "f":
             builder.add_32bit_float(float(value))
+        elif self._fmt == "pow":
+            builder.add_32bit_uint(int(value*100))
         else:
             _LOGGER.error(f"Invalid encoding format {self._fmt} for {self._key}")
             return
