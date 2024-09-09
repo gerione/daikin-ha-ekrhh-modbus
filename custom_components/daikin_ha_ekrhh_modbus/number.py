@@ -144,7 +144,7 @@ class DaikinEKRHHNumber(NumberEntity):
         elif self._fmt == "f":
             builder.add_32bit_float(float(value))
         elif self._fmt == "pow":
-            builder.add_32bit_uint(int(value*100))
+            builder.add_16bit_uint(int(value*100))
         else:
             _LOGGER.error(f"Invalid encoding format {self._fmt} for {self._key}")
             return
