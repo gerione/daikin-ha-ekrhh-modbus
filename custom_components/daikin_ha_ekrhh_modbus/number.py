@@ -146,7 +146,7 @@ class DaikinEKRHHNumber(NumberEntity):
         elif self._fmt == "pow":
             builder.add_16bit_uint(int(value*100))
         elif self._fmt == "i16":
-            builder.add_16bit_int(int(value*100))
+            builder.add_16bit_int(int(value))
         else:
             _LOGGER.error(f"Invalid encoding format {self._fmt} for {self._key}")
             return
