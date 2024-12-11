@@ -7,10 +7,17 @@ from .const import (
     ATTR_STATUS_DESCRIPTION,
     DEVICE_STATUSSES,
     ATTR_MANUFACTURER,
+    A2A_SENSOR_TYPES,
 )
 from datetime import datetime
 from homeassistant.helpers.entity import Entity
-from homeassistant.const import CONF_NAME, UnitOfEnergy, UnitOfPower, UnitOfTemperature, UnitOfVolumeFlowRate
+from homeassistant.const import (
+    CONF_NAME,
+    UnitOfEnergy,
+    UnitOfPower,
+    UnitOfTemperature,
+    UnitOfVolumeFlowRate,
+)
 from homeassistant.components.sensor import (
     PLATFORM_SCHEMA,
     SensorEntity,
@@ -35,19 +42,32 @@ async def async_setup_entry(hass, entry, async_add_entities):
     }
 
     entities = []
-    for sensor_info in SENSOR_TYPES.values():
-        sensor = DaikinEKRHHSensor(
-            hub_name,
-            hub,
-            device_info,
-            sensor_info[0],
-            sensor_info[1],
-            sensor_info[2],
-            sensor_info[3],
-        )
-        entities.append(sensor)
-    if hub._additional_zone:
-        for sensor_info in ADDITIONAL_ZONE_SENSOR_TYPES.values():
+    if not hub._is_air2air:
+        for sensor_info in SENSOR_TYPES.values():
+            sensor = DaikinEKRHHSensor(
+                hub_name,
+                hub,
+                device_info,
+                sensor_info[0],
+                sensor_info[1],
+                sensor_info[2],
+                sensor_info[3],
+            )
+            entities.append(sensor)
+        if hub._additional_zone:
+            for sensor_info in ADDITIONAL_ZONE_SENSOR_TYPES.values():
+                sensor = DaikinEKRHHSensor(
+                    hub_name,
+                    hub,
+                    device_info,
+                    sensor_info[0],
+                    sensor_info[1],
+                    sensor_info[2],
+                    sensor_info[3],
+                )
+                entities.append(sensor)
+    else:
+        for sensor_info in A2A_SENSOR_TYPES.values():
             sensor = DaikinEKRHHSensor(
                 hub_name,
                 hub,
@@ -75,7 +95,10 @@ class DaikinEKRHHSensor(SensorEntity):
         self._icon = icon
         self._device_info = device_info
         self._attr_state_class = SensorStateClass.MEASUREMENT
-        if self._unit_of_measurement == UnitOfPower.WATT or self._unit_of_measurement == UnitOfPower.KILO_WATT:
+        if (
+            self._unit_of_measurement == UnitOfPower.WATT
+            or self._unit_of_measurement == UnitOfPower.KILO_WATT
+        ):
             self._attr_device_class = SensorDeviceClass.POWER
         elif self._unit_of_measurement == UnitOfTemperature.CELSIUS:
             self._attr_device_class = SensorDeviceClass.TEMPERATURE

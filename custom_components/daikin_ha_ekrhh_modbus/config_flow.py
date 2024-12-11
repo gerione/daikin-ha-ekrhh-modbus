@@ -1,25 +1,27 @@
-from homeassistant import config_entries
-from homeassistant.const import CONF_NAME, CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL
-from homeassistant.core import HomeAssistant, callback
 from .const import (
     CONF_ADDITIONAL_ZONE,
-    CONF_MODBUS_ADDRESS,
+    CONF_ISAIR2AIR,
     DOMAIN,
     DEFAULT_NAME,
     DEFAULT_PORT,
-    DEFAULT_MODBUS_ADDRESS,
     DEFAULT_SCAN_INTERVAL,
-    DEFAULT_ADDITIONAL_ZONE
+    DEFAULT_ADDITIONAL_ZONE,
+    DEFAULT_AIR2AIR,
 )
-import voluptuous as vol
+from homeassistant import config_entries
+from homeassistant.const import CONF_NAME, CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL
+from homeassistant.core import HomeAssistant, callback
 import ipaddress
 import re
+import voluptuous as vol
+
 
 DATA_SCHEMA = vol.Schema(
     {
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): str,
         vol.Required(CONF_HOST): str,
         vol.Required(CONF_PORT, default=DEFAULT_PORT): int,
+        vol.Required(CONF_ISAIR2AIR, default=DEFAULT_AIR2AIR): bool,
         vol.Required(CONF_ADDITIONAL_ZONE, default=DEFAULT_ADDITIONAL_ZONE): bool,
         vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
     }

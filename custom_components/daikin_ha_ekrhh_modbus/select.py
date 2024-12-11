@@ -5,7 +5,8 @@ from .const import (
     DOMAIN,
     ATTR_MANUFACTURER,
     DAIKIN_SELECT_TYPES,
-    DAIKIN_ADDITIONAL_ZONE_SELECT_TYPES
+    DAIKIN_ADDITIONAL_ZONE_SELECT_TYPES,
+    DAIKIN_A2A_SELECT_TYPES,
 )
 
 from homeassistant.const import CONF_NAME
@@ -30,21 +31,8 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
     }
 
     entities = []
-
-    for select_info in DAIKIN_SELECT_TYPES:
-        select = DaikinHAEKRHHModbusSelect(
-            hub_name,
-            hub,
-            device_info,
-            select_info[0],
-            select_info[1],
-            select_info[2],
-            select_info[3],
-        )
-        entities.append(select)
-
-    if hub._additional_zone:
-        for select_info in DAIKIN_ADDITIONAL_ZONE_SELECT_TYPES:
+    if not hub._is_air2air:
+        for select_info in DAIKIN_SELECT_TYPES:
             select = DaikinHAEKRHHModbusSelect(
                 hub_name,
                 hub,
@@ -56,7 +44,30 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
             )
             entities.append(select)
 
-
+        if hub._additional_zone:
+            for select_info in DAIKIN_ADDITIONAL_ZONE_SELECT_TYPES:
+                select = DaikinHAEKRHHModbusSelect(
+                    hub_name,
+                    hub,
+                    device_info,
+                    select_info[0],
+                    select_info[1],
+                    select_info[2],
+                    select_info[3],
+                )
+                entities.append(select)
+    else:
+        for select_info in DAIKIN_A2A_SELECT_TYPES:
+            select = DaikinHAEKRHHModbusSelect(
+                hub_name,
+                hub,
+                device_info,
+                select_info[0],
+                select_info[1],
+                select_info[2],
+                select_info[3],
+            )
+            entities.append(select)
     async_add_entities(entities)
 
     return True
@@ -116,14 +127,15 @@ class DaikinHAEKRHHModbusSelect(SelectEntity):
         if self._key in self._hub.data:
             return self.options[self._hub.data[self._key]]
 
-
     def get_options(self):
         return list(self._option_dict.values())
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
         new_mode = get_key(self._option_dict, option)
-        result = self._hub.write_registers(unit=1, address=self._register, payload=new_mode)
+        result = self._hub.write_registers(
+            unit=1, address=self._register, payload=new_mode
+        )
         if not result.isError():
             self._hub.data[self._key] = new_mode
         self.async_write_ha_state()

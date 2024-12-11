@@ -10,6 +10,9 @@ CONF_ADDITIONAL_ZONE = "additional_zone"
 ATTR_STATUS_DESCRIPTION = "status_description"
 ATTR_MANUFACTURER = "Daikin"
 
+CONF_ISAIR2AIR="is_air_to_air_heatpump"
+DEFAULT_AIR2AIR=False
+
 SENSOR_TYPES = {
     "H1": ["Leaving water Main Heating setpoint","leave_water_heating_setpoint","°C","mdi:temperature-celsius",],
     "H2": ["Leaving water Main Cooling setpoint","leave_water_cooling_setpoint","°C","mdi:temperature-celsius",],
@@ -145,4 +148,18 @@ DAIKIN_NUMBER_TYPES = [
 DAIKIN_ADDITIONAL_ZONE_NUMBER_TYPES = [
     ["Weather dependent mode Add LWT Heating setpoint offset", "Weather_dependent_mode_Add_LWT_Heating_setpoint_offset", 65, "i16", {"min": -10, "max": 10, "step": 1, "unit": "°C"}],
     ["Weather dependent mode Add LWT Cooling setpoint offset", "Weather_dependent_mode_Add_LWT_Cooling_setpoint_offset", 66, "i16", {"min": -10, "max": 10, "step": 1, "unit": "°C"}],
+]
+
+
+A2A_SENSOR_TYPES = {
+    "H1001": ["Smart Grid operation mode","A2A_Smart_Grid_operation_mode",None,None,],
+    "H1002": ["Power limit for Demand Control","Power_limit_for_Demand_Control","kW","mdi:lightning-bolt",]
+}
+
+DAIKIN_A2A_SELECT_TYPES = [
+    ["Smart grid", "A2A_Smart_Grid_operation_mode", 1000, DAIKIN_SG_MODE_OPTIONS]
+]
+
+DAIKIN_A2A_NUMBER_TYPES = [
+    ["Power limit for Demand Control", " Power_limit_for_Demand_Control", 1001, "pow", {"min": 0, "max": 20, "step": 0.1,"unit": "kW"}]
 ]

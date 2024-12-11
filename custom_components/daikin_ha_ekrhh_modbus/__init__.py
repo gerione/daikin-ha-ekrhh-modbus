@@ -23,13 +23,14 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_MODBUS_ADDRESS,
     CONF_MODBUS_ADDRESS,
-    CONF_ADDITIONAL_ZONE
+    CONF_ADDITIONAL_ZONE,
+    CONF_ISAIR2AIR,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 
-PLATFORMS = ["number","sensor", "select"]
+PLATFORMS = ["number", "sensor", "select"]
 # PLATFORMS = ["number", "select", "sensor"]
 
 
@@ -47,20 +48,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     port = entry.data[CONF_PORT]
     scan_interval = entry.data[CONF_SCAN_INTERVAL]
     additional_zone = entry.data[CONF_ADDITIONAL_ZONE]
+    is_air2air = entry.data[CONF_ISAIR2AIR]
 
     hub = DaikinEKRHHModbusHub(
-        hass,
-        name,
-        host,
-        port,
-        scan_interval,
-        additional_zone
+        hass, name, host, port, scan_interval, additional_zone, is_air2air
     )
 
     hass.data[DOMAIN][name] = {"hub": hub}
 
     for component in PLATFORMS:
-        hass.async_create_task(hass.config_entries.async_forward_entry_setup(entry, component))
+        hass.async_create_task(
+            hass.config_entries.async_forward_entry_setup(entry, component)
+        )
     return True
 
 
@@ -85,13 +84,7 @@ class DaikinEKRHHModbusHub:
     """Thread safe wrapper class for pymodbus."""
 
     def __init__(
-        self,
-        hass,
-        name,
-        host,
-        port,
-        scan_interval,
-        additional_zone
+        self, hass, name, host, port, scan_interval, additional_zone, is_air2air
     ):
         """Initialize the Modbus hub."""
         self._hass = hass
@@ -102,6 +95,7 @@ class DaikinEKRHHModbusHub:
         self._name = name
         self._scan_interval = timedelta(seconds=scan_interval)
         self._additional_zone = additional_zone
+        self._is_air2air = is_air2air
         self._unsub_interval_method = None
         self._sensors = []
         self.data = {}
@@ -197,6 +191,7 @@ class DaikinEKRHHModbusHub:
             return self._client.read_holding_registers(
                 address=address, count=count, slave=unit
             )
+
     def read_input_registers(self, unit, address, count):
         """Read input registers."""
         with self._lock:
@@ -214,21 +209,33 @@ class DaikinEKRHHModbusHub:
     def calculate_value(self, value, sf):
         return value * 10**sf
 
-    def calculate_temp (self, value):
+    def calculate_temp(self, value):
         # Scaling: /100, Range –327.68~327.67°C
-        return value*1.0/100.0
+        return value * 1.0 / 100.0
 
-    def calculate_power (self, value):
+    def calculate_power(self, value):
         # Scaling: /100, Range –327.68~327.67 kW
-        return value*1.0/100.0
+        return value * 1.0 / 100.0
 
     def read_modbus_data(self):
-        inverter_data = self.read_holding_registers(address=0, count=60, unit=1)
-        if inverter_data.isError():
-            return False
+        # Read only air2air data, which is limited right now
+        if self._is_air2air:
+            heatpump_data = self.read_holding_registers(address=1000, count=2, unit=1)
+            if heatpump_data.isError():
+                return False
+            decoder = BinaryPayloadDecoder.fromRegisters(
+                heatpump_data.registers, byteorder=Endian.BIG
+            )
+            self.data["Power_limit_for_Demand_Control"] = decoder.decode_16bit_int()
+            self.data["Power_limit_for_Demand_Control"] = self.calculate_power(
+                decoder.decode_16bit_int()
+            )
 
+        heatpump_data = self.read_holding_registers(address=0, count=60, unit=1)
+        if heatpump_data.isError():
+            return False
         decoder = BinaryPayloadDecoder.fromRegisters(
-            inverter_data.registers, byteorder=Endian.BIG
+            heatpump_data.registers, byteorder=Endian.BIG
         )
         leave_water_heating_setpoint = decoder.decode_16bit_int()
         leave_water_cooling_setpoint = decoder.decode_16bit_int()
@@ -261,17 +268,20 @@ class DaikinEKRHHModbusHub:
         )
         self.data["Smart_Grid_operation_mode"] = decoder.decode_16bit_int()
         self.data["Power_limit_during_Recommended_on_buffering"] = self.calculate_power(
-            decoder.decode_16bit_int())
-        self.data["General_power_limit"] = self.calculate_power(decoder.decode_16bit_int())
+            decoder.decode_16bit_int()
+        )
+        self.data["General_power_limit"] = self.calculate_power(
+            decoder.decode_16bit_int()
+        )
         self.data["Thermostat_Main_Input_A"] = decoder.decode_16bit_int()
         decoder.skip_bytes(2)
 
-        inverter_data = self.read_holding_registers(address=61, count=7, unit=1)
-        if inverter_data.isError():
+        heatpump_data = self.read_holding_registers(address=61, count=7, unit=1)
+        if heatpump_data.isError():
             return False
 
         decoder = BinaryPayloadDecoder.fromRegisters(
-            inverter_data.registers, byteorder=Endian.BIG
+            heatpump_data.registers, byteorder=Endian.BIG
         )
         self.data["Thermostat_Add_Input_A"] = decoder.decode_16bit_int()
         decoder.skip_bytes(2)
@@ -285,18 +295,18 @@ class DaikinEKRHHModbusHub:
             decoder.decode_16bit_int()
         )
 
-        inverter_data = self.read_input_registers(address=20, count=41, unit=1)
-        if inverter_data.isError():
+        heatpump_data = self.read_input_registers(address=20, count=41, unit=1)
+        if heatpump_data.isError():
             return False
 
         decoder = BinaryPayloadDecoder.fromRegisters(
-            inverter_data.registers, byteorder=Endian.BIG
+            heatpump_data.registers, byteorder=Endian.BIG
         )
 
         self.data["Unit error"] = decoder.decode_16bit_int()
         self.data["Unit error code"] = decoder.decode_string(2)
         self.data["Unit error sub code"] = decoder.decode_16bit_int()
-        decoder.skip_bytes(2*6)
+        decoder.skip_bytes(2 * 6)
         self.data["Circulation pump running"] = decoder.decode_16bit_int()
         self.data["Compressor run"] = decoder.decode_16bit_int()
         self.data["Booster heater run"] = decoder.decode_16bit_int()
@@ -307,24 +317,56 @@ class DaikinEKRHHModbusHub:
         self.data["3-way valve"] = decoder.decode_16bit_int()
         self.data["Operation mode"] = decoder.decode_16bit_int()
         decoder.skip_bytes(2)
-        self.data["Leaving water temperature PHE"] = self.calculate_temp(decoder.decode_16bit_int())
-        self.data["Leaving water temperature BUH"] = self.calculate_temp(decoder.decode_16bit_int())
-        self.data["Return water temperature"] = self.calculate_temp(decoder.decode_16bit_int())
-        self.data["Domestic Hot Water temperature"] = self.calculate_temp(decoder.decode_16bit_int())
-        self.data["Outside air temperature"] = self.calculate_temp(decoder.decode_16bit_int())
-        self.data["Liquid refrigerant temperature"] = self.calculate_temp(decoder.decode_16bit_int())
-        decoder.skip_bytes(2*3)
-        self.data["Flow rate"] = decoder.decode_16bit_int()/100.0
-        self.data["Remote controller room temperature"] = self.calculate_temp(decoder.decode_16bit_int())
-        self.data["Heat pump power consumption"] = self.calculate_power(decoder.decode_16bit_int())
+        self.data["Leaving water temperature PHE"] = self.calculate_temp(
+            decoder.decode_16bit_int()
+        )
+        self.data["Leaving water temperature BUH"] = self.calculate_temp(
+            decoder.decode_16bit_int()
+        )
+        self.data["Return water temperature"] = self.calculate_temp(
+            decoder.decode_16bit_int()
+        )
+        self.data["Domestic Hot Water temperature"] = self.calculate_temp(
+            decoder.decode_16bit_int()
+        )
+        self.data["Outside air temperature"] = self.calculate_temp(
+            decoder.decode_16bit_int()
+        )
+        self.data["Liquid refrigerant temperature"] = self.calculate_temp(
+            decoder.decode_16bit_int()
+        )
+        decoder.skip_bytes(2 * 3)
+        self.data["Flow rate"] = decoder.decode_16bit_int() / 100.0
+        self.data["Remote controller room temperature"] = self.calculate_temp(
+            decoder.decode_16bit_int()
+        )
+        self.data["Heat pump power consumption"] = self.calculate_power(
+            decoder.decode_16bit_int()
+        )
         self.data["DHW normal operation"] = decoder.decode_16bit_int()
         self.data["Space heating/cooling normal operation"] = decoder.decode_16bit_int()
-        self.data["Leaving water Main Heating setpoint Lower limit"] = self.calculate_temp(decoder.decode_16bit_int())
-        self.data["Leaving water Main Heating setpoint Upper limit"] = self.calculate_temp(decoder.decode_16bit_int())
-        self.data["Leaving water Main Coolin setpoint Lower limit"] = self.calculate_temp(decoder.decode_16bit_int())
-        self.data["Leaving water Main Cooling setpoint Upper limit"] = self.calculate_temp(decoder.decode_16bit_int())
-        self.data["Leaving water Add Heating setpoint Lower limit"] = self.calculate_temp(decoder.decode_16bit_int())
-        self.data["Leaving water Add Heating setpoint Upper limit"] = self.calculate_temp(decoder.decode_16bit_int())
-        self.data["Leaving water Add Cooling setpoint Lower limit"] = self.calculate_temp(decoder.decode_16bit_int())
-        self.data["Leaving water Add Cooling setpoint Upper limit"] = self.calculate_temp(decoder.decode_16bit_int())
+        self.data["Leaving water Main Heating setpoint Lower limit"] = (
+            self.calculate_temp(decoder.decode_16bit_int())
+        )
+        self.data["Leaving water Main Heating setpoint Upper limit"] = (
+            self.calculate_temp(decoder.decode_16bit_int())
+        )
+        self.data["Leaving water Main Coolin setpoint Lower limit"] = (
+            self.calculate_temp(decoder.decode_16bit_int())
+        )
+        self.data["Leaving water Main Cooling setpoint Upper limit"] = (
+            self.calculate_temp(decoder.decode_16bit_int())
+        )
+        self.data["Leaving water Add Heating setpoint Lower limit"] = (
+            self.calculate_temp(decoder.decode_16bit_int())
+        )
+        self.data["Leaving water Add Heating setpoint Upper limit"] = (
+            self.calculate_temp(decoder.decode_16bit_int())
+        )
+        self.data["Leaving water Add Cooling setpoint Lower limit"] = (
+            self.calculate_temp(decoder.decode_16bit_int())
+        )
+        self.data["Leaving water Add Cooling setpoint Upper limit"] = (
+            self.calculate_temp(decoder.decode_16bit_int())
+        )
         return True
