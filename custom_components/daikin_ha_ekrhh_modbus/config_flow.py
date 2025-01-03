@@ -38,13 +38,49 @@ def host_valid(host):
         return all(x and not disallowed.search(x) for x in host.split("."))
 
 
+OPTIONS_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_HOST): str,
+        vol.Required(CONF_PORT): int,
+        vol.Required(CONF_ISAIR2AIR): bool,
+        vol.Required(CONF_ADDITIONAL_ZONE): bool,
+        vol.Optional(CONF_SCAN_INTERVAL): int,
+    }
+)
+
+
+class OptionsFlowHandler(config_entries.OptionsFlow):
+    def __init__(self, config_entry):
+        """Initialize HACS options flow."""
+        self.config_entry = config_entry
+
+    async def async_step_init(
+        self, user_input: dict[str, any] | None = None
+    ) -> config_entries.FlowResult:
+        """Manage the options."""
+        if user_input is not None:
+            if CONF_NAME in self.config_entry.data:
+                user_input[CONF_NAME] = self.config_entry.data[CONF_NAME]
+            self.hass.config_entries.async_update_entry(
+                self.config_entry, data=user_input, options=self.config_entry.options
+            )
+            return self.async_create_entry(title="", data={})
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=self.add_suggested_values_to_schema(
+                OPTIONS_SCHEMA, self.config_entry.data
+            ),
+        )
+
+
 class DaikinHaEkrhhModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Example config flow."""
 
     # The schema version of the entries that it creates
     # Home Assistant will call your migrate method if the version changes
     VERSION = 1
-    MINOR_VERSION = 1
+    MINOR_VERSION = 2
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
 
     async def async_step_user(self, user_input=None):
@@ -64,3 +100,11 @@ class DaikinHaEkrhhModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user", data_schema=DATA_SCHEMA, errors=errors
         )
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> OptionsFlowHandler:
+        """Create the options flow."""
+        return OptionsFlowHandler(config_entry)
