@@ -240,10 +240,16 @@ class DaikinEKRHHModbusHub:
 
     def write_registers(self, unit, address, payload):
         """Write registers."""
-        with self._lock:
-            return self._client.write_register(
-                address=address, value=payload, slave=unit
-            )
+        try:
+            with self._lock:
+                return self._client.write_register(
+                    address=address, value=payload, slave=unit
+                )
+        except:
+            with self._lock:
+                return self._client.write_registers(
+                    address=address, values=payload, slave=unit
+                )
 
     def calculate_value(self, value, sf):
         return value * 10**sf
