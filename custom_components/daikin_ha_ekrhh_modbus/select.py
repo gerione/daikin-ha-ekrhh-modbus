@@ -124,8 +124,10 @@ class DaikinHAEKRHHModbusSelect(SelectEntity):
 
     @property
     def current_option(self) -> str:
-        if self._key in self._hub.data:
-            return self.options[self._hub.data[self._key]]
+        index = self._hub.data.get(self._key)
+        if index is not None and 0 <= index < len(self.options):
+            return self.options[index]
+        return None  # or return some default value
 
     def get_options(self):
         return list(self._option_dict.values())

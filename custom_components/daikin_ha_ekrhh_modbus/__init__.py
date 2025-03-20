@@ -8,8 +8,6 @@ from typing import Optional
 import voluptuous as vol
 from pymodbus.client import ModbusTcpClient
 from pymodbus.constants import Endian
-from pymodbus.payload import BinaryPayloadDecoder
-
 import homeassistant.helpers.config_validation as cv
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL
@@ -62,10 +60,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     hass.data[DOMAIN][name] = {"hub": hub}
 
-    for component in PLATFORMS:
-        hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(entry, component)
-        )
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
 
@@ -262,150 +257,134 @@ class DaikinEKRHHModbusHub:
             heatpump_data = self.read_holding_registers(address=1000, count=2, unit=1)
             if heatpump_data.isError():
                 return False
-            decoder = BinaryPayloadDecoder.fromRegisters(
-                heatpump_data.registers, byteorder=Endian.BIG
+            decoded_values = self._client.convert_from_registers(
+                heatpump_data.registers, data_type=self._client.DATATYPE.INT16
             )
-            self.data["Power_limit_for_Demand_Control"] = decoder.decode_16bit_int()
+            self.data["A2A_Smart_Grid_operation_mode"] = decoded_values[0]
             self.data["Power_limit_for_Demand_Control"] = self.calculate_power(
-                decoder.decode_16bit_int()
+                decoded_values[1]
             )
 
         heatpump_data = self.read_holding_registers(address=0, count=60, unit=1)
         if heatpump_data.isError():
             return False
-        decoder = BinaryPayloadDecoder.fromRegisters(
-            heatpump_data.registers, byteorder=Endian.BIG
-        )
-        leave_water_heating_setpoint = decoder.decode_16bit_int()
-        leave_water_cooling_setpoint = decoder.decode_16bit_int()
-        op_mode = decoder.decode_16bit_int()
-        space_heating_on_off = decoder.decode_16bit_int()
-        decoder.skip_bytes(2)
-        room_thermo_setpoint_heating = decoder.decode_16bit_int()
-        room_thermo_setpoint_cooling = decoder.decode_16bit_int()
 
-        self.data["leave_water_heating_setpoint"] = leave_water_heating_setpoint
-        self.data["leave_water_cooling_setpoint"] = leave_water_cooling_setpoint
-        self.data["op_mode"] = op_mode
-        self.data["space_heating_on_off"] = space_heating_on_off
-        self.data["room_thermo_setpoint_heating"] = room_thermo_setpoint_heating
-        self.data["room_thermo_setpoint_cooling"] = room_thermo_setpoint_cooling
+        decoded_values = self._client.convert_from_registers(
+            heatpump_data.registers, data_type=self._client.DATATYPE.INT16
+        )
 
-        decoder.skip_bytes(2)
-        self.data["quiet_mode_operation"] = decoder.decode_16bit_int()
-        self.data["DHW_reheat_setpoint"] = decoder.decode_16bit_int()
-        decoder.skip_bytes(2)
-        self.data["DHW_reheat_ON_OFF"] = decoder.decode_16bit_int()
-        self.data["DHW_booster_mode_ON_OFF"] = decoder.decode_16bit_int()
-        decoder.skip_bytes(39 * 2)
-        self.data["Weather_dependent_mode_Main"] = decoder.decode_16bit_int()
-        self.data["Weather_dependent_mode_main_setpoint_offset"] = (
-            decoder.decode_16bit_int()
-        )
-        self.data["Weather_dependent_mode_cooling_setpoint_offset"] = (
-            decoder.decode_16bit_int()
-        )
-        self.data["Smart_Grid_operation_mode"] = decoder.decode_16bit_int()
+        self.data["leave_water_heating_setpoint"] = decoded_values[0]
+        self.data["leave_water_cooling_setpoint"] = decoded_values[1]
+        self.data["op_mode"] = decoded_values[2]
+        self.data["space_heating_on_off"] = decoded_values[3]
+        self.data["room_thermo_setpoint_heating"] = decoded_values[5]
+        self.data["room_thermo_setpoint_cooling"] = decoded_values[6]
+        self.data["quiet_mode_operation"] = decoded_values[8]
+        self.data["DHW_reheat_setpoint"] = decoded_values[9]
+        self.data["DHW_reheat_ON_OFF"] = decoded_values[11]
+        self.data["DHW_booster_mode_ON_OFF"] = decoded_values[12]
+
+        self.data["Weather_dependent_mode_Main"] = decoded_values[52]
+        self.data["Weather_dependent_mode_main_setpoint_offset"] = decoded_values[53]
+        self.data["Weather_dependent_mode_cooling_setpoint_offset"] = decoded_values[54]
+        self.data["Smart_Grid_operation_mode"] = decoded_values[55]
         self.data["Power_limit_during_Recommended_on_buffering"] = self.calculate_power(
-            decoder.decode_16bit_int()
+            decoded_values[56]
         )
-        self.data["General_power_limit"] = self.calculate_power(
-            decoder.decode_16bit_int()
-        )
-        self.data["Thermostat_Main_Input_A"] = decoder.decode_16bit_int()
-        decoder.skip_bytes(2)
+        self.data["General_power_limit"] = self.calculate_power(decoded_values[57])
+        self.data["Thermostat_Main_Input_A"] = decoded_values[58]
 
         heatpump_data = self.read_holding_registers(address=61, count=7, unit=1)
         if heatpump_data.isError():
             return False
-
-        decoder = BinaryPayloadDecoder.fromRegisters(
-            heatpump_data.registers, byteorder=Endian.BIG
+        decoded_values = self._client.convert_from_registers(
+            heatpump_data.registers, data_type=self._client.DATATYPE.INT16
         )
-        self.data["Thermostat_Add_Input_A"] = decoder.decode_16bit_int()
-        decoder.skip_bytes(2)
-        self.data["Leaving_water_Add_Heating_setpoint"] = decoder.decode_16bit_int()
-        self.data["Leaving_water_Add_Cooling_setpoint"] = decoder.decode_16bit_int()
-        self.data["Weather_dependent_mode_Add"] = decoder.decode_16bit_int()
+
+        self.data["Thermostat_Add_Input_A"] = decoded_values[0]
+        self.data["Leaving_water_Add_Heating_setpoint"] = decoded_values[2]
+        self.data["Leaving_water_Add_Cooling_setpoint"] = decoded_values[3]
+        self.data["Weather_dependent_mode_Add"] = decoded_values[4]
         self.data["Weather_dependent_mode_Add_LWT_Heating_setpoint_offset"] = (
-            decoder.decode_16bit_int()
+            decoded_values[5]
         )
         self.data["Weather_dependent_mode_Add_LWT_Cooling_setpoint_offset"] = (
-            decoder.decode_16bit_int()
+            decoded_values[6]
         )
 
         heatpump_data = self.read_input_registers(address=20, count=41, unit=1)
         if heatpump_data.isError():
             return False
 
-        decoder = BinaryPayloadDecoder.fromRegisters(
-            heatpump_data.registers, byteorder=Endian.BIG
+        decoded_values = self._client.convert_from_registers(
+            heatpump_data.registers, data_type=self._client.DATATYPE.INT16
         )
 
-        self.data["Unit error"] = decoder.decode_16bit_int()
-        self.data["Unit error code"] = decoder.decode_string(2)
-        self.data["Unit error sub code"] = decoder.decode_16bit_int()
-        decoder.skip_bytes(2 * 6)
-        self.data["Circulation pump running"] = decoder.decode_16bit_int()
-        self.data["Compressor run"] = decoder.decode_16bit_int()
-        self.data["Booster heater run"] = decoder.decode_16bit_int()
-        self.data["Disinfection operation"] = decoder.decode_16bit_int()
-        decoder.skip_bytes(2)
-        self.data["Defrost/Startup"] = decoder.decode_16bit_int()
-        self.data["Hot Start"] = decoder.decode_16bit_int()
-        self.data["3-way valve"] = decoder.decode_16bit_int()
-        self.data["Operation mode"] = decoder.decode_16bit_int()
-        decoder.skip_bytes(2)
+        self.data["Unit error"] = decoded_values[0]
+        decoded_values = self._client.convert_from_registers(
+            heatpump_data.registers, data_type=self._client.DATATYPE.INT16
+        )
+
+        self.data["Unit error code"] = chr((decoded_values[1] >> 8) & 0xFF) + chr(
+            decoded_values[1] & 0xFF
+        )
+        self.data["Unit error sub code"] = decoded_values[2]
+
+        self.data["Circulation pump running"] = decoded_values[9]
+        self.data["Compressor run"] = decoded_values[10]
+        self.data["Booster heater run"] = decoded_values[11]
+        self.data["Disinfection operation"] = decoded_values[12]
+        self.data["Defrost/Startup"] = decoded_values[14]
+        self.data["Hot Start"] = decoded_values[15]
+        self.data["3-way valve"] = decoded_values[16]
+        self.data["Operation mode"] = decoded_values[17]
+
         self.data["Leaving water temperature PHE"] = self.calculate_temp(
-            decoder.decode_16bit_int()
+            decoded_values[19]
         )
         self.data["Leaving water temperature BUH"] = self.calculate_temp(
-            decoder.decode_16bit_int()
+            decoded_values[20]
         )
-        self.data["Return water temperature"] = self.calculate_temp(
-            decoder.decode_16bit_int()
-        )
+        self.data["Return water temperature"] = self.calculate_temp(decoded_values[21])
         self.data["Domestic Hot Water temperature"] = self.calculate_temp(
-            decoder.decode_16bit_int()
+            decoded_values[22]
         )
-        self.data["Outside air temperature"] = self.calculate_temp(
-            decoder.decode_16bit_int()
-        )
+        self.data["Outside air temperature"] = self.calculate_temp(decoded_values[23])
         self.data["Liquid refrigerant temperature"] = self.calculate_temp(
-            decoder.decode_16bit_int()
+            decoded_values[24]
         )
-        decoder.skip_bytes(2 * 3)
-        self.data["Flow rate"] = decoder.decode_16bit_int() / 100.0
+
+        self.data["Flow rate"] = decoded_values[28] / 100.0
         self.data["Remote controller room temperature"] = self.calculate_temp(
-            decoder.decode_16bit_int()
+            decoded_values[29]
         )
         self.data["Heat pump power consumption"] = self.calculate_power(
-            decoder.decode_16bit_int()
+            decoded_values[30]
         )
-        self.data["DHW normal operation"] = decoder.decode_16bit_int()
-        self.data["Space heating/cooling normal operation"] = decoder.decode_16bit_int()
+        self.data["DHW normal operation"] = decoded_values[31]
+        self.data["Space heating/cooling normal operation"] = decoded_values[32]
         self.data["Leaving water Main Heating setpoint Lower limit"] = (
-            self.calculate_temp(decoder.decode_16bit_int())
+            self.calculate_temp(decoded_values[33])
         )
         self.data["Leaving water Main Heating setpoint Upper limit"] = (
-            self.calculate_temp(decoder.decode_16bit_int())
+            self.calculate_temp(decoded_values[34])
         )
         self.data["Leaving water Main Coolin setpoint Lower limit"] = (
-            self.calculate_temp(decoder.decode_16bit_int())
+            self.calculate_temp(decoded_values[35])
         )
         self.data["Leaving water Main Cooling setpoint Upper limit"] = (
-            self.calculate_temp(decoder.decode_16bit_int())
+            self.calculate_temp(decoded_values[36])
         )
         self.data["Leaving water Add Heating setpoint Lower limit"] = (
-            self.calculate_temp(decoder.decode_16bit_int())
+            self.calculate_temp(decoded_values[37])
         )
         self.data["Leaving water Add Heating setpoint Upper limit"] = (
-            self.calculate_temp(decoder.decode_16bit_int())
+            self.calculate_temp(decoded_values[38])
         )
         self.data["Leaving water Add Cooling setpoint Lower limit"] = (
-            self.calculate_temp(decoder.decode_16bit_int())
+            self.calculate_temp(decoded_values[39])
         )
         self.data["Leaving water Add Cooling setpoint Upper limit"] = (
-            self.calculate_temp(decoder.decode_16bit_int())
+            self.calculate_temp(decoded_values[40])
         )
         return True
