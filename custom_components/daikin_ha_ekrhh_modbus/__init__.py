@@ -264,7 +264,7 @@ class DaikinEKRHHModbusHub:
             if heatpump_data.isError():
                 return False
             decoded_values = self._client.convert_from_registers(
-                heatpump_data.registers, data_type=self._client.DATATYPE.INT16, word_order: 'big' 
+                heatpump_data.registers, data_type=self._client.DATATYPE.INT16, word_order= 'big' 
             )
             self.data["A2A_Smart_Grid_operation_mode"] = decoded_values[0]
             self.data["Power_limit_for_Demand_Control"] = self.calculate_power(
@@ -276,7 +276,7 @@ class DaikinEKRHHModbusHub:
             return False
 
         decoded_values = self._client.convert_from_registers(
-            heatpump_data.registers, data_type=self._client.DATATYPE.INT16, word_order: 'big' 
+            heatpump_data.registers, data_type=self._client.DATATYPE.INT16, word_order= 'big'  
         )
 
         self.data["leave_water_heating_setpoint"] = decoded_values[0]
@@ -304,7 +304,7 @@ class DaikinEKRHHModbusHub:
         if heatpump_data.isError():
             return False
         decoded_values = self._client.convert_from_registers(
-            heatpump_data.registers, data_type=self._client.DATATYPE.INT16, word_order: 'big' 
+            heatpump_data.registers, data_type=self._client.DATATYPE.INT16, word_order= 'big' 
         )
 
         self.data["Thermostat_Add_Input_A"] = decoded_values[0]
@@ -328,7 +328,7 @@ class DaikinEKRHHModbusHub:
 
         self.data["Unit error"] = decoded_values[0]
         decoded_values = self._client.convert_from_registers(
-            heatpump_data.registers, data_type=self._client.DATATYPE.INT16, word_order: 'big' 
+            heatpump_data.registers, data_type=self._client.DATATYPE.INT16, word_order= 'big' 
         )
 
         self.data["Unit error code"] = chr((decoded_values[1] >> 8) & 0xFF) + chr(
