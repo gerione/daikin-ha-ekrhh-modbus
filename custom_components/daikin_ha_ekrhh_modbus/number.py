@@ -10,7 +10,6 @@ from .const import (
 )
 
 from pymodbus.constants import Endian
-from pymodbus.payload import BinaryPayloadBuilder
 
 from homeassistant.const import CONF_NAME
 from homeassistant.components.number import (
@@ -150,25 +149,46 @@ class DaikinEKRHHNumber(NumberEntity):
 
     async def async_set_native_value(self, value: float) -> None:
         """Change the selected value."""
-        builder = BinaryPayloadBuilder(byteorder=Endian.BIG, wordorder=Endian.LITTLE)
-
+        payload = 0
         if self._fmt == "u32":
-            builder.add_32bit_uint(int(value))
+            payload = self._hub._client.convert_to_registers(
+                value,
+                data_type=self._hub._client.DATATYPE.UINT32,
+                word_order="big",
+            )
         elif self._fmt == "u16":
-            builder.add_16bit_uint(int(value))
+            payload = self._hub._client.convert_to_registers(
+                value,
+                data_type=self._hub._client.DATATYPE.UINT16,
+                word_order="big",
+            )
         elif self._fmt == "f":
-            builder.add_32bit_float(float(value))
+            payload = self._hub._client.convert_to_registers(
+                value,
+                data_type=self._hub._client.DATATYPE.FLOAT32,
+                word_order="big",
+            )
         elif self._fmt == "pow":
-            builder.add_16bit_uint(int(value * 100))
+            payload = self._hub._client.convert_to_registers(
+                int(value * 100),
+                data_type=self._hub._client.DATATYPE.UINT16,
+                word_order="big",
+            )
         elif self._fmt == "i16":
-            builder.add_16bit_int(int(value))
+            payload = self._hub._client.convert_to_registers(
+                int(value),
+                data_type=self._hub._client.DATATYPE.INT16,
+                word_order="big",
+            )
+
         else:
             _LOGGER.error(f"Invalid encoding format {self._fmt} for {self._key}")
             return
 
         response = self._hub.write_registers(
-            unit=1, address=self._register, payload=builder.to_registers()
+            unit=1, address=self._register, payload=payload
         )
+
         if response.isError():
             _LOGGER.error(f"Could not write value {value} to {self._key}")
             return
