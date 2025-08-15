@@ -145,3 +145,12 @@ class DaikinHAEKRHHModbusSelect(SelectEntity):
     @property
     def device_info(self) -> Optional[Dict[str, Any]]:
         return self._device_info
+
+    @property
+    def available(self) -> bool:
+        if (
+            not "Unit error sub code" in self._hub.data
+            or self._hub.data["Unit error sub code"] != 32766
+        ):
+            return False
+        return True

@@ -1,12 +1,18 @@
 # Daikin EKRHH Modbus for Home Assistant
-Version 0.1 of the integration. 
+Version 0.3.4 of the integration. 
 It is usable, but additional zone could not be tested so far. 
 The latest information can be found: [EKRHH Daikin Homepage](https://www.daikin.at/de_at/produktsuche/product.html/EKRHH.html#Installer-reference-guide-documents-b7f056ea11)
 In this document also the modbus registers can be found. 
 
 ## Installation
-Do not use it as of now. This is just a first working version, that reads all the sensors
+### HACS
+Select HACS, add the URL to custom_components. 
+Search for the Daikin_EKRHH_Modbus integration, select it, and press the Download button to install to download the integration. Now continue the installation as described at Using config flow
 
+### Manually
+You can install the code manually by copying the Daikin_EKRHH_Modbus folder and all of its contents into your Home Assistant's custom_components folder. 
+
+## Daikin settings
 ### Working modes
 EKRHH supports 3 modes. 
 1. Use case 1 – PV self-consumption for Daikin Altherma

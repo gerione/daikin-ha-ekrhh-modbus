@@ -145,6 +145,7 @@ class DaikinEKRHHSensor(SensorEntity):
         """Return the state of the sensor."""
         if self._key in self._hub.data:
             return self._hub.data[self._key]
+        return None
 
     @property
     def extra_state_attributes(self):
@@ -160,3 +161,12 @@ class DaikinEKRHHSensor(SensorEntity):
     @property
     def device_info(self) -> Optional[Dict[str, Any]]:
         return self._device_info
+
+    @property
+    def available(self) -> bool:
+        if (
+            not "Unit error sub code" in self._hub.data
+            or self._hub.data["Unit error sub code"] != 32766
+        ):
+            return False
+        return True

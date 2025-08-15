@@ -195,3 +195,12 @@ class DaikinEKRHHNumber(NumberEntity):
 
         self._hub.data[self._key] = value
         self.async_write_ha_state()
+
+    @property
+    def available(self) -> bool:
+        if (
+            not "Unit error sub code" in self._hub.data
+            or self._hub.data["Unit error sub code"] != 32766
+        ):
+            return False
+        return True
