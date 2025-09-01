@@ -152,13 +152,13 @@ class DaikinEKRHHNumber(NumberEntity):
         payload = 0
         if self._fmt == "u32":
             payload = self._hub._client.convert_to_registers(
-                value,
+                int(value),
                 data_type=self._hub._client.DATATYPE.UINT32,
                 word_order="big",
             )
         elif self._fmt == "u16":
             payload = self._hub._client.convert_to_registers(
-                value,
+                int(value),
                 data_type=self._hub._client.DATATYPE.UINT16,
                 word_order="big",
             )
