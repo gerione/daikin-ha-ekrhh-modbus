@@ -1,5 +1,5 @@
 # Daikin EKRHH Modbus for Home Assistant
-Version 0.4.1 of the integration. 
+Version 0.4.2 of the integration. 
 It is usable, but additional zone could not be tested so far. 
 The latest information can be found: [EKRHH Daikin Homepage](https://www.daikin.at/de_at/produktsuche/product.html/EKRHH.html#Installer-reference-guide-documents-b7f056ea11)
 In this document also the modbus registers can be found. 
