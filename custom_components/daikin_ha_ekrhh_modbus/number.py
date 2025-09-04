@@ -9,7 +9,6 @@ from .const import (
     DAIKIN_A2A_NUMBER_TYPES,
 )
 
-from pymodbus.constants import Endian
 
 from homeassistant.const import CONF_NAME
 from homeassistant.components.number import (
