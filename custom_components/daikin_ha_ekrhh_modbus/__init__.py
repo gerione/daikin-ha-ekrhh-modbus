@@ -223,14 +223,14 @@ class DaikinEKRHHModbusHub:
         """Read holding registers."""
         with self._lock:
             return self._client.read_holding_registers(
-                address=address, count=count, slave=unit
+                address=address, count=count, device_id=unit
             )
 
     def read_input_registers(self, unit, address, count):
         """Read input registers."""
         with self._lock:
             return self._client.read_input_registers(
-                address=address, count=count, slave=unit
+                address=address, count=count, device_id=unit
             )
 
     def write_registers(self, unit, address, payload):
@@ -238,12 +238,12 @@ class DaikinEKRHHModbusHub:
         try:
             with self._lock:
                 return self._client.write_register(
-                    address=address, value=payload, slave=unit
+                    address=address, value=payload, device_id=unit
                 )
         except:
             with self._lock:
                 return self._client.write_registers(
-                    address=address, values=payload, slave=unit
+                    address=address, values=payload, device_id=unit
                 )
 
     def calculate_value(self, value, sf):
