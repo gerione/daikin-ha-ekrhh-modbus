@@ -7,7 +7,6 @@ from typing import Optional
 
 import voluptuous as vol
 from pymodbus.client import ModbusTcpClient
-from pymodbus.constants import Endian
 import homeassistant.helpers.config_validation as cv
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL
