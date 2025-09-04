@@ -1,5 +1,6 @@
 {
   "name": "Daikin EKRHH Modbus",
   "render_readme": true,
-  "iot_class": "local_polling"
+  "iot_class": "local_polling",
+  "homeassistant": "2025.9.0"
 }
