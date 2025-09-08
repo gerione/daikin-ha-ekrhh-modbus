@@ -200,6 +200,6 @@ class DaikinEKRHHNumber(NumberEntity):
         if (
             not "Unit error sub code" in self._hub.data
             or self._hub.data["Unit error sub code"] != 32766
-        ):
+        ) and not self._hub._is_air2air:
             return False
         return True
