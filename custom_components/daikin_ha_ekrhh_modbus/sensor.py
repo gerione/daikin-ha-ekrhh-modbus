@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Any
 from .const import (
     ADDITIONAL_ZONE_SENSOR_TYPES,
     SENSOR_TYPES,
@@ -9,24 +9,20 @@ from .const import (
     ATTR_MANUFACTURER,
     A2A_SENSOR_TYPES,
 )
-from datetime import datetime
-from homeassistant.helpers.entity import Entity
+
 from homeassistant.const import (
     CONF_NAME,
-    UnitOfEnergy,
     UnitOfPower,
     UnitOfTemperature,
     UnitOfVolumeFlowRate,
 )
 from homeassistant.components.sensor import (
-    PLATFORM_SCHEMA,
     SensorEntity,
     SensorDeviceClass,
     SensorStateClass,
 )
 
 from homeassistant.core import callback
-from homeassistant.util import dt as dt_util
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -159,14 +155,22 @@ class DaikinEKRHHSensor(SensorEntity):
         return False
 
     @property
-    def device_info(self) -> Optional[Dict[str, Any]]:
+    def device_info(self) -> Optional[dict[str, Any]]:
         return self._device_info
 
     @property
     def available(self) -> bool:
+        if self._key in ("Unit error", "Unit error sub code", "Unit error code"):
+            return True
+        if self._hub._is_air2air:
+            return True
+        if "Unit error" not in self._hub.data or (
+            self._hub.data["Unit error"] != 0 and self._hub.data["Unit error"] != 2
+        ):
+            return False
         if (
-            not "Unit error sub code" in self._hub.data
+            "Unit error sub code" not in self._hub.data
             or self._hub.data["Unit error sub code"] != 32766
-        ) and not self._hub._is_air2air:
+        ):
             return False
         return True

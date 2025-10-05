@@ -7,10 +7,12 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_ADDITIONAL_ZONE,
     DEFAULT_AIR2AIR,
+    CONF_MAX_POWER,
+    CONF_MAX_WATER_TEMP,
 )
 from homeassistant import config_entries
 from homeassistant.const import CONF_NAME, CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import callback
 import ipaddress
 import re
 import voluptuous as vol
@@ -44,19 +46,17 @@ OPTIONS_SCHEMA = vol.Schema(
         vol.Required(CONF_PORT): int,
         vol.Required(CONF_ISAIR2AIR): bool,
         vol.Required(CONF_ADDITIONAL_ZONE): bool,
+        vol.Required(CONF_MAX_POWER): vol.All(int, vol.Range(min=2, max=20)),
+        vol.Required(CONF_MAX_WATER_TEMP): vol.All(int, vol.Range(min=50, max=80)),
         vol.Optional(CONF_SCAN_INTERVAL): int,
     }
 )
 
 
-class OptionsFlowHandler(config_entries.OptionsFlow):
-    def __init__(self, config_entry):
-        """Initialize HACS options flow."""
-        self.config_entry = config_entry
-
+class OptionsFlowHandler(config_entries.OptionsFlowWithReload):
     async def async_step_init(
         self, user_input: dict[str, any] | None = None
-    ) -> config_entries.FlowResult:
+    ) -> config_entries.ConfigFlowResult:
         """Manage the options."""
         if user_input is not None:
             if CONF_NAME in self.config_entry.data:
@@ -64,7 +64,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             self.hass.config_entries.async_update_entry(
                 self.config_entry, data=user_input, options=self.config_entry.options
             )
-            return self.async_create_entry(title="", data={})
+            # return self.async_create_entry(title="", data={})
+            return self.async_create_entry(data=user_input)
 
         return self.async_show_form(
             step_id="init",
@@ -80,7 +81,7 @@ class DaikinHaEkrhhModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     # The schema version of the entries that it creates
     # Home Assistant will call your migrate method if the version changes
     VERSION = 1
-    MINOR_VERSION = 2
+    MINOR_VERSION = 3
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
 
     async def async_step_user(self, user_input=None):
@@ -107,4 +108,4 @@ class DaikinHaEkrhhModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         config_entry: config_entries.ConfigEntry,
     ) -> OptionsFlowHandler:
         """Create the options flow."""
-        return OptionsFlowHandler(config_entry)
+        return OptionsFlowHandler()

@@ -7,6 +7,9 @@ DEFAULT_MODBUS_ADDRESS = 1
 DEFAULT_ADDITIONAL_ZONE=False
 CONF_MODBUS_ADDRESS = "modbus_address"
 CONF_ADDITIONAL_ZONE = "additional_zone"
+CONF_MAX_POWER="max_power"
+CONF_MAX_WATER_TEMP="max_water_temp"
+
 ATTR_STATUS_DESCRIPTION = "status_description"
 ATTR_MANUFACTURER = "Daikin"
 

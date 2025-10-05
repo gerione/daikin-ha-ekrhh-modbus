@@ -148,9 +148,17 @@ class DaikinHAEKRHHModbusSelect(SelectEntity):
 
     @property
     def available(self) -> bool:
+        if self._key in ("Unit error", "Unit error sub code", "Unit error code"):
+            return True
+        if self._hub._is_air2air:
+            return True
+        if "Unit error" not in self._hub.data or (
+            self._hub.data["Unit error"] != 0 and self._hub.data["Unit error"] != 2
+        ):
+            return False
         if (
-            not "Unit error sub code" in self._hub.data
+            "Unit error sub code" not in self._hub.data
             or self._hub.data["Unit error sub code"] != 32766
-        ) and not self._hub._is_air2air:
+        ):
             return False
         return True

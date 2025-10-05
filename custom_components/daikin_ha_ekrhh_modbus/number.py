@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Any
 
 from .const import (
     DOMAIN,
@@ -11,8 +11,8 @@ from .const import (
 
 
 from homeassistant.const import CONF_NAME
+from .const import CONF_MAX_POWER, CONF_MAX_WATER_TEMP
 from homeassistant.components.number import (
-    PLATFORM_SCHEMA,
     NumberEntity,
 )
 
@@ -34,6 +34,16 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
     entities = []
     if not hub._is_air2air:
         for number_info in DAIKIN_NUMBER_TYPES:
+            max = number_info[4]["max"]
+            if (
+                number_info[1] == "General_power_limit"
+                or number_info[1] == "Power_limit_during_Recommended_on_buffering"
+            ):
+                max = entry.data[CONF_MAX_POWER]
+
+            if number_info[1] == "DHW_reheat_setpoint":
+                max = entry.data[CONF_MAX_WATER_TEMP]
+
             number = DaikinEKRHHNumber(
                 hub_name,
                 hub,
@@ -44,7 +54,7 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
                 number_info[3],
                 dict(
                     min=number_info[4]["min"],
-                    max=number_info[4]["max"],
+                    max=max,
                     unit=number_info[4]["unit"],
                     step=number_info[4]["step"],
                 ),
@@ -71,6 +81,9 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
                 entities.append(number)
     else:
         for number_info in DAIKIN_A2A_NUMBER_TYPES:
+            max = (number_info[4]["max"],)
+            if number_info[1] == "Power_limit_for_Demand_Control":
+                max = entry.data[CONF_MAX_POWER]
             number = DaikinEKRHHNumber(
                 hub_name,
                 hub,
@@ -81,7 +94,7 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
                 number_info[3],
                 dict(
                     min=number_info[4]["min"],
-                    max=number_info[4]["max"],
+                    max=max,
                     unit=number_info[4]["unit"],
                     step=number_info[4]["step"],
                 ),
@@ -138,7 +151,7 @@ class DaikinEKRHHNumber(NumberEntity):
         return False
 
     @property
-    def device_info(self) -> Optional[Dict[str, Any]]:
+    def device_info(self) -> Optional[dict[str, Any]]:
         return self._device_info
 
     @property
@@ -197,9 +210,17 @@ class DaikinEKRHHNumber(NumberEntity):
 
     @property
     def available(self) -> bool:
+        if self._key in ("Unit error", "Unit error sub code", "Unit error code"):
+            return True
+        if self._hub._is_air2air:
+            return True
+        if "Unit error" not in self._hub.data or (
+            self._hub.data["Unit error"] != 0 and self._hub.data["Unit error"] != 2
+        ):
+            return False
         if (
-            not "Unit error sub code" in self._hub.data
+            "Unit error sub code" not in self._hub.data
             or self._hub.data["Unit error sub code"] != 32766
-        ) and not self._hub._is_air2air:
+        ):
             return False
         return True

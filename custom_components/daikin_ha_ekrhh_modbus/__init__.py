@@ -1,11 +1,9 @@
 import asyncio
 import logging
-import operator
 import threading
 from datetime import timedelta
 from typing import Optional
 
-import voluptuous as vol
 from pymodbus.client import ModbusTcpClient
 import homeassistant.helpers.config_validation as cv
 from homeassistant.config_entries import ConfigEntry
@@ -16,10 +14,8 @@ from homeassistant.helpers.event import async_track_time_interval
 
 from .const import (
     DOMAIN,
-    DEFAULT_NAME,
-    DEFAULT_SCAN_INTERVAL,
-    DEFAULT_MODBUS_ADDRESS,
-    CONF_MODBUS_ADDRESS,
+    CONF_MAX_POWER,
+    CONF_MAX_WATER_TEMP,
     CONF_ADDITIONAL_ZONE,
     CONF_ISAIR2AIR,
 )
@@ -97,11 +93,14 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
     if config_entry.version == 1:
         new_data = {**config_entry.data}
         if config_entry.minor_version < 2:
-            # TODO: modify Config Entry data with changes in version 1.2
             new_data[CONF_ISAIR2AIR] = False
 
+        if config_entry.minor_version < 3:
+            new_data[CONF_MAX_POWER] = 20
+            new_data[CONF_MAX_WATER_TEMP] = 60
+
         hass.config_entries.async_update_entry(
-            config_entry, data=new_data, minor_version=2, version=1
+            config_entry, data=new_data, minor_version=3, version=1
         )
 
     _LOGGER.debug(
@@ -118,7 +117,7 @@ class DaikinEKRHHModbusHub:
 
     def __init__(
         self, hass, name, host, port, scan_interval, additional_zone, is_air2air
-    ):
+    ) -> None:
         """Initialize the Modbus hub."""
         self._hass = hass
         self._client = ModbusTcpClient(
@@ -193,7 +192,7 @@ class DaikinEKRHHModbusHub:
 
     def _check_and_reconnect(self):
         if not self._client.connected:
-            _LOGGER.info("modbus client is not connected, trying to reconnect")
+            _LOGGER.info("Modbus client is not connected, trying to reconnect")
             return self.connect()
 
         return self._client.connected
@@ -206,13 +205,13 @@ class DaikinEKRHHModbusHub:
 
         if result:
             _LOGGER.info(
-                "successfully connected to %s:%s",
+                "Successfully connected to %s:%s",
                 self._client.comm_params.host,
                 self._client.comm_params.port,
             )
         else:
             _LOGGER.warning(
-                "not able to connect to %s:%s",
+                "Not able to connect to %s:%s",
                 self._client.comm_params.host,
                 self._client.comm_params.port,
             )
