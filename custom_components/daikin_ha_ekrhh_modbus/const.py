@@ -16,6 +16,9 @@ ATTR_MANUFACTURER = "Daikin"
 CONF_ISAIR2AIR="is_air_to_air_heatpump"
 DEFAULT_AIR2AIR=False
 
+DEFAULT_MAX_POWER=19
+DEFAULT_MAX_WATER_TEMP=60
+
 SENSOR_TYPES = {
     "H1": ["Leaving water Main Heating setpoint","leave_water_heating_setpoint","°C","mdi:temperature-celsius",],
     "H2": ["Leaving water Main Cooling setpoint","leave_water_cooling_setpoint","°C","mdi:temperature-celsius",],

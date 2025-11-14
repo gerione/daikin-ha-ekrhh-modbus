@@ -81,7 +81,7 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
                 entities.append(number)
     else:
         for number_info in DAIKIN_A2A_NUMBER_TYPES:
-            max = (number_info[4]["max"],)
+            max = number_info[4]["max"]
             if number_info[1] == "Power_limit_for_Demand_Control":
                 max = entry.data[CONF_MAX_POWER]
             number = DaikinEKRHHNumber(
@@ -101,7 +101,6 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
             )
             entities.append(number)
     async_add_entities(entities)
-    return True
 
 
 class DaikinEKRHHNumber(NumberEntity):
@@ -158,6 +157,7 @@ class DaikinEKRHHNumber(NumberEntity):
     def native_value(self) -> float:
         if self._key in self._hub.data:
             return self._hub.data[self._key]
+        return 0.0
 
     async def async_set_native_value(self, value: float) -> None:
         """Change the selected value."""

@@ -9,6 +9,8 @@ from .const import (
     DEFAULT_AIR2AIR,
     CONF_MAX_POWER,
     CONF_MAX_WATER_TEMP,
+    DEFAULT_MAX_POWER,
+    DEFAULT_MAX_WATER_TEMP,
 )
 from homeassistant import config_entries
 from homeassistant.const import CONF_NAME, CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL
@@ -26,6 +28,12 @@ DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_ISAIR2AIR, default=DEFAULT_AIR2AIR): bool,
         vol.Required(CONF_ADDITIONAL_ZONE, default=DEFAULT_ADDITIONAL_ZONE): bool,
         vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
+        vol.Optional(CONF_MAX_POWER, default=DEFAULT_MAX_POWER): vol.All(
+            int, vol.Range(min=2, max=20)
+        ),
+        vol.Optional(CONF_MAX_WATER_TEMP, default=DEFAULT_MAX_WATER_TEMP): vol.All(
+            int, vol.Range(min=50, max=80)
+        ),
     }
 )
 
@@ -55,7 +63,8 @@ OPTIONS_SCHEMA = vol.Schema(
 
 class OptionsFlowHandler(config_entries.OptionsFlowWithReload):
     async def async_step_init(
-        self, user_input: dict[str, any] | None = None
+        self,
+        user_input: dict[str, any] | None = None,  # type: ignore
     ) -> config_entries.ConfigFlowResult:
         """Manage the options."""
         if user_input is not None:
