@@ -142,6 +142,8 @@ DAIKIN_ADDITIONAL_ZONE_SELECT_TYPES = [
 ]
 
 DAIKIN_NUMBER_TYPES = [
+    ["Leaving water Main Heating setpoint","leave_water_heating_setpoint", 0, "u16", {"min": 12, "max": 65, "step": 1, "unit": "°C"}],
+    ["Leaving water Main Cooling setpoint","leave_water_cooling_setpoint", 1, "u16", {"min": 5, "max": 30, "step": 1, "unit": "°C"}],
     ["Room thermostat control Heating setpoint", "room_thermo_setpoint_heating", 5, "u16", {"min": 12, "max": 30, "step": 1, "unit": "°C"}],
     ["Room thermostat control Cooling setpoint", "room_thermo_setpoint_cooling", 6, "u16", {"min": 15, "max": 35, "step": 1,"unit": "°C"}],
     ["DHW reheat setpoint", "DHW_reheat_setpoint", 9, "u16", {"min": 30, "max": 60, "step": 1, "unit": "°C"}],
@@ -152,6 +154,8 @@ DAIKIN_NUMBER_TYPES = [
 ]
 
 DAIKIN_ADDITIONAL_ZONE_NUMBER_TYPES = [
+    ["Leaving water Add Heating setpoint","leave_water_heating_setpoint", 62, "u16", {"min": 12, "max": 65, "step": 1, "unit": "°C"}],
+    ["Leaving water Add Cooling setpoint","leave_water_cooling_setpoint", 63, "u16", {"min": 5, "max": 30, "step": 1, "unit": "°C"}],
     ["Weather dependent mode Add LWT Heating setpoint offset", "Weather_dependent_mode_Add_LWT_Heating_setpoint_offset", 65, "i16", {"min": -10, "max": 10, "step": 1, "unit": "°C"}],
     ["Weather dependent mode Add LWT Cooling setpoint offset", "Weather_dependent_mode_Add_LWT_Cooling_setpoint_offset", 66, "i16", {"min": -10, "max": 10, "step": 1, "unit": "°C"}],
 ]
