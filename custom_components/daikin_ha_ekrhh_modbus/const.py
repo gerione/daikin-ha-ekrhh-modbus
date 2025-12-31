@@ -154,8 +154,8 @@ DAIKIN_NUMBER_TYPES = [
 ]
 
 DAIKIN_ADDITIONAL_ZONE_NUMBER_TYPES = [
-    ["Leaving water Add Heating setpoint","leave_water_heating_setpoint", 62, "u16", {"min": 12, "max": 65, "step": 1, "unit": "°C"}],
-    ["Leaving water Add Cooling setpoint","leave_water_cooling_setpoint", 63, "u16", {"min": 5, "max": 30, "step": 1, "unit": "°C"}],
+    ["Leaving water Add Heating setpoint","Leaving_water_Add_Heating_setpoint", 62, "u16", {"min": 12, "max": 65, "step": 1, "unit": "°C"}],
+    ["Leaving water Add Cooling setpoint","Leaving_water_Add_Cooling_setpoint", 63, "u16", {"min": 5, "max": 30, "step": 1, "unit": "°C"}],
     ["Weather dependent mode Add LWT Heating setpoint offset", "Weather_dependent_mode_Add_LWT_Heating_setpoint_offset", 65, "i16", {"min": -10, "max": 10, "step": 1, "unit": "°C"}],
     ["Weather dependent mode Add LWT Cooling setpoint offset", "Weather_dependent_mode_Add_LWT_Cooling_setpoint_offset", 66, "i16", {"min": -10, "max": 10, "step": 1, "unit": "°C"}],
 ]
