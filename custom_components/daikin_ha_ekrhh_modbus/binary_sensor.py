@@ -1,25 +1,20 @@
 import logging
+
 from typing import Optional, Any
 from .const import (
-    ADDITIONAL_ZONE_SENSOR_TYPES,
-    SENSOR_TYPES,
+    ALTHERMA_3_BINARY_SENSOR_TYPES,
+    ALTHERMA_4_BINARY_SENSOR_TYPES,
     DOMAIN,
-    ATTR_STATUS_DESCRIPTION,
-    DEVICE_STATUSES,
     ATTR_MANUFACTURER,
-    A2A_SENSOR_TYPES,
 )
 
 from homeassistant.const import (
     CONF_NAME,
-    UnitOfPower,
-    UnitOfTemperature,
-    UnitOfVolumeFlowRate,
 )
-from homeassistant.components.sensor import (
-    SensorEntity,
-    SensorDeviceClass,
-    SensorStateClass,
+
+from homeassistant.components.binary_sensor import (
+    BinarySensorEntity,
+    BinarySensorDeviceClass,
 )
 
 from homeassistant.core import callback
@@ -39,20 +34,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     entities = []
     if not hub._is_air2air:
-        for sensor_info in SENSOR_TYPES.values():
-            sensor = DaikinEKRHHSensor(
-                hub_name,
-                hub,
-                device_info,
-                sensor_info[0],
-                sensor_info[1],
-                sensor_info[2],
-                sensor_info[3],
-            )
-            entities.append(sensor)
-        if hub._additional_zone:
-            for sensor_info in ADDITIONAL_ZONE_SENSOR_TYPES.values():
-                sensor = DaikinEKRHHSensor(
+        if hub.altherma_version == 3:
+            for sensor_info in ALTHERMA_3_BINARY_SENSOR_TYPES:
+                sensor = DaikinEKRHHBinarySensor(
                     hub_name,
                     hub,
                     device_info,
@@ -62,23 +46,24 @@ async def async_setup_entry(hass, entry, async_add_entities):
                     sensor_info[3],
                 )
                 entities.append(sensor)
-    else:
-        for sensor_info in A2A_SENSOR_TYPES.values():
-            sensor = DaikinEKRHHSensor(
-                hub_name,
-                hub,
-                device_info,
-                sensor_info[0],
-                sensor_info[1],
-                sensor_info[2],
-                sensor_info[3],
-            )
-            entities.append(sensor)
+        else:
+            for sensor_info in ALTHERMA_4_BINARY_SENSOR_TYPES:
+                sensor = DaikinEKRHHBinarySensor(
+                    hub_name,
+                    hub,
+                    device_info,
+                    sensor_info[0],
+                    sensor_info[1],
+                    sensor_info[2],
+                    sensor_info[3],
+                )
+                entities.append(sensor)
+
     async_add_entities(entities)
     return True
 
 
-class DaikinEKRHHSensor(SensorEntity):
+class DaikinEKRHHBinarySensor(BinarySensorEntity):
     """Representation of an Daikin EKRHH Modbus sensor."""
 
     def __init__(self, platform_name, hub, device_info, name, key, unit, icon):
@@ -90,16 +75,6 @@ class DaikinEKRHHSensor(SensorEntity):
         self._unit_of_measurement = unit
         self._icon = icon
         self._device_info = device_info
-        self._attr_state_class = SensorStateClass.MEASUREMENT
-        if (
-            self._unit_of_measurement == UnitOfPower.WATT
-            or self._unit_of_measurement == UnitOfPower.KILO_WATT
-        ):
-            self._attr_device_class = SensorDeviceClass.POWER
-        elif self._unit_of_measurement == UnitOfTemperature.CELSIUS:
-            self._attr_device_class = SensorDeviceClass.TEMPERATURE
-        elif self._unit_of_measurement == UnitOfVolumeFlowRate.LITERS_PER_MINUTE:
-            self._attr_device_class = SensorDeviceClass.VOLUME_FLOW_RATE
 
     async def async_added_to_hass(self):
         """Register callbacks."""
@@ -127,27 +102,17 @@ class DaikinEKRHHSensor(SensorEntity):
         return f"{self._platform_name}_{self._key}"
 
     @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return self._unit_of_measurement
-
-    @property
     def icon(self):
         """Return the sensor icon."""
         return self._icon
 
     @property
-    def state(self):
-        """Return the state of the sensor."""
-        if self._key in self._hub.data:
-            return self._hub.data[self._key]
-        return None
+    def device_class(self):
+        return BinarySensorDeviceClass.RUNNING
 
     @property
-    def extra_state_attributes(self):
-        if self._key in ["status", "statusvendor"] and self.state in DEVICE_STATUSES:
-            return {ATTR_STATUS_DESCRIPTION: DEVICE_STATUSES[self.state]}
-        return None
+    def is_on(self):
+        return self._hub.data[self._key] == 1
 
     @property
     def should_poll(self) -> bool:

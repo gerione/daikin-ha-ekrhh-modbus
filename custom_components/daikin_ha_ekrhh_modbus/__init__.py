@@ -13,17 +13,25 @@ from homeassistant.core import callback
 from homeassistant.helpers.event import async_track_time_interval
 
 from .const import (
+    ALTHERMA_3_INPUT,
+    ALTHERMA_3_HOLDING,
+    ALTHERMA_4_COILS,
+    ALTHERMA_4_COILS_ADDITIONAL_ZONE,
+    ALTHERMA_4_HOLDING,
+    ALTHERMA_4_INPUT,
+    ALTHERMA_4_DISCRETE_INPUTS,
     DOMAIN,
     CONF_MAX_POWER,
     CONF_MAX_WATER_TEMP,
     CONF_ADDITIONAL_ZONE,
     CONF_ISAIR2AIR,
+    CONF_ALTHERMA_VERSION,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 
-PLATFORMS = ["number", "sensor", "select"]
+PLATFORMS = ["number", "sensor", "select", "binary_sensor"]
 # PLATFORMS = ["number", "select", "sensor"]
 
 
@@ -42,6 +50,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     scan_interval = entry.data[CONF_SCAN_INTERVAL]
     additional_zone = entry.data[CONF_ADDITIONAL_ZONE]
     is_air2air = entry.data[CONF_ISAIR2AIR]
+    altherma_version = entry.data[CONF_ALTHERMA_VERSION]
 
     hub = DaikinEKRHHModbusHub(
         hass,
@@ -51,6 +60,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         scan_interval,
         additional_zone,
         is_air2air,
+        altherma_version,
     )
 
     hass.data[DOMAIN][name] = {"hub": hub}
@@ -99,6 +109,9 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
             new_data[CONF_MAX_POWER] = 20
             new_data[CONF_MAX_WATER_TEMP] = 60
 
+        if config_entry.minor_version < 4:
+            new_data[CONF_ALTHERMA_VERSION] = 3
+
         hass.config_entries.async_update_entry(
             config_entry, data=new_data, minor_version=3, version=1
         )
@@ -116,7 +129,15 @@ class DaikinEKRHHModbusHub:
     """Thread safe wrapper class for pymodbus."""
 
     def __init__(
-        self, hass, name, host, port, scan_interval, additional_zone, is_air2air
+        self,
+        hass,
+        name,
+        host,
+        port,
+        scan_interval,
+        additional_zone,
+        is_air2air,
+        altherma_version,
     ) -> None:
         """Initialize the Modbus hub."""
         self._hass = hass
@@ -131,6 +152,7 @@ class DaikinEKRHHModbusHub:
         self._unsub_interval_method = None
         self._sensors = []
         self.data = {}
+        self.altherma_version = altherma_version
 
     @callback
     def async_add_daikin_ekrhh_sensor(self, update_callback):
@@ -231,6 +253,18 @@ class DaikinEKRHHModbusHub:
                 address=address, count=count, device_id=unit
             )
 
+    def read_discrete_inputs(self, unit, address, count):
+        """Read input registers."""
+        with self._lock:
+            return self._client.read_discrete_inputs(
+                address=address, count=count, device_id=unit
+            )
+
+    def read_coils(self, unit, address, count):
+        """Read input registers."""
+        with self._lock:
+            return self._client.read_coils(address=address, count=count, device_id=unit)
+
     def write_registers(self, unit, address, payload):
         """Write registers."""
         try:
@@ -270,133 +304,141 @@ class DaikinEKRHHModbusHub:
             self.data["Power_limit_for_Demand_Control"] = self.calculate_power(
                 decoded_values[1]
             )
+            return True
 
-        heatpump_data = self.read_holding_registers(address=0, count=60, unit=1)
-        if heatpump_data.isError():
-            return False
+        if self.altherma_version != 3:
+            sorted_list = sorted(ALTHERMA_4_HOLDING, key=lambda x: x[0])
+        else:
+            sorted_list = sorted(ALTHERMA_3_HOLDING, key=lambda x: x[0])
 
-        decoded_values = self._client.convert_from_registers(
-            heatpump_data.registers,
-            data_type=self._client.DATATYPE.INT16,
-            word_order="big",
-        )
+        # Iterate over the sorted list
+        adress = 0
+        count = 0
+        MAX_COUNT = 60
+        for item in sorted_list:
+            if adress + count < item[0]:
+                adress = item[0] - 1
+                count = MAX_COUNT
+                heatpump_data = self.read_holding_registers(
+                    address=adress, count=MAX_COUNT, unit=1
+                )
+                if heatpump_data.isError():
+                    return False
 
-        self.data["leave_water_heating_setpoint"] = decoded_values[0]
-        self.data["leave_water_cooling_setpoint"] = decoded_values[1]
-        self.data["op_mode"] = decoded_values[2]
-        self.data["space_heating_on_off"] = decoded_values[3]
-        self.data["room_thermo_setpoint_heating"] = decoded_values[5]
-        self.data["room_thermo_setpoint_cooling"] = decoded_values[6]
-        self.data["quiet_mode_operation"] = decoded_values[8]
-        self.data["DHW_reheat_setpoint"] = decoded_values[9]
-        self.data["DHW_reheat_ON_OFF"] = decoded_values[11]
-        self.data["DHW_booster_mode_ON_OFF"] = decoded_values[12]
+                decoded_values = self._client.convert_from_registers(
+                    heatpump_data.registers,
+                    data_type=self._client.DATATYPE.INT16,
+                    word_order="big",
+                )
+            offset = item[0] - adress - 1
+            if item[3] == "INT16":
+                self.data[item[2]] = decoded_values[offset]
+            elif item[3] == "TEMP16":
+                self.data[item[2]] = self.calculate_temp(decoded_values[offset])
+            elif item[3] == "POW16":
+                self.data[item[2]] = self.calculate_power(decoded_values[offset])
+            elif item[3] == "FLOW16":
+                self.data[item[2]] = decoded_values[offset] / 100.0
+            elif item[3] == "TEXT16":
+                self.data[item[2]] = chr((decoded_values[offset] >> 8) & 0xFF) + chr(
+                    decoded_values[offset] & 0xFF
+                )
 
-        self.data["Weather_dependent_mode_Main"] = decoded_values[52]
-        self.data["Weather_dependent_mode_main_setpoint_offset"] = decoded_values[53]
-        self.data["Weather_dependent_mode_cooling_setpoint_offset"] = decoded_values[54]
-        self.data["Smart_Grid_operation_mode"] = decoded_values[55]
-        self.data["Power_limit_during_Recommended_on_buffering"] = self.calculate_power(
-            decoded_values[56]
-        )
-        self.data["General_power_limit"] = self.calculate_power(decoded_values[57])
-        self.data["Thermostat_Main_Input_A"] = decoded_values[58]
+        if self.altherma_version != 3:
+            sorted_list = sorted(ALTHERMA_4_INPUT, key=lambda x: x[0])
+        else:
+            sorted_list = sorted(ALTHERMA_3_INPUT, key=lambda x: x[0])
+        # Iterate over the sorted list
+        adress = 0
+        count = 0
+        MAX_COUNT = 41
+        for item in sorted_list:
+            if adress + count < item[0]:
+                adress = item[0] - 1
+                count = MAX_COUNT
+                heatpump_data = self.read_input_registers(
+                    address=adress, count=MAX_COUNT, unit=1
+                )
+                if heatpump_data.isError():
+                    return False
 
-        heatpump_data = self.read_holding_registers(address=60, count=7, unit=1)
-        if heatpump_data.isError():
-            return False
-        decoded_values = self._client.convert_from_registers(
-            heatpump_data.registers,
-            data_type=self._client.DATATYPE.INT16,
-            word_order="big",
-        )
+                decoded_values = self._client.convert_from_registers(
+                    heatpump_data.registers,
+                    data_type=self._client.DATATYPE.INT16,
+                    word_order="big",
+                )
+            offset = item[0] - adress - 1
+            if item[3] == "INT16":
+                self.data[item[2]] = decoded_values[offset]
+            elif item[3] == "TEMP16":
+                self.data[item[2]] = self.calculate_temp(decoded_values[offset])
+            elif item[3] == "POW16":
+                self.data[item[2]] = self.calculate_power(decoded_values[offset])
+            elif item[3] == "FLOW16":
+                self.data[item[2]] = decoded_values[offset] / 100.0
+            elif item[3] == "TEXT16":
+                self.data[item[2]] = chr((decoded_values[offset] >> 8) & 0xFF) + chr(
+                    decoded_values[offset] & 0xFF
+                )
+        if self.altherma_version == 3:
+            return True
 
-        self.data["Thermostat_Add_Input_A"] = decoded_values[0]  # 61
-        self.data["Leaving_water_Add_Heating_setpoint"] = decoded_values[2]  # 63
-        self.data["Leaving_water_Add_Cooling_setpoint"] = decoded_values[3]  # 64
-        self.data["Weather_dependent_mode_Add"] = decoded_values[4]  # 65
-        self.data["Weather_dependent_mode_Add_LWT_Heating_setpoint_offset"] = (
-            decoded_values[5]  # 66
-        )
-        self.data["Weather_dependent_mode_Add_LWT_Cooling_setpoint_offset"] = (
-            decoded_values[6]  # 67
-        )
+        sorted_list = sorted(ALTHERMA_4_COILS, key=lambda x: x[0])
 
-        heatpump_data = self.read_input_registers(address=20, count=41, unit=1)
-        if heatpump_data.isError():
-            return False
+        # Iterate over the sorted list
+        adress = 0
+        count = 0
+        MAX_COUNT = 41
+        for item in sorted_list:
+            if adress + count < item[0]:
+                adress = item[0] - 1
+                count = MAX_COUNT
+                heatpump_data = self.read_coils(address=adress, count=MAX_COUNT, unit=1)
+                if heatpump_data.isError():
+                    return False
 
-        decoded_values = self._client.convert_from_registers(
-            heatpump_data.registers, data_type=self._client.DATATYPE.INT16
-        )
+                decoded_values = heatpump_data.bits
+            offset = item[0] - adress - 1
+            self.data[item[2]] = decoded_values[offset]
 
-        self.data["Unit error"] = decoded_values[0]
-        decoded_values = self._client.convert_from_registers(
-            heatpump_data.registers,
-            data_type=self._client.DATATYPE.INT16,
-            word_order="big",
-        )
+        if self._additional_zone:
+            sorted_list = sorted(ALTHERMA_4_COILS_ADDITIONAL_ZONE, key=lambda x: x[0])
 
-        self.data["Unit error code"] = chr((decoded_values[1] >> 8) & 0xFF) + chr(
-            decoded_values[1] & 0xFF
-        )
-        self.data["Unit error sub code"] = decoded_values[2]
+            # Iterate over the sorted list
+            adress = 0
+            count = 0
+            MAX_COUNT = 41
+            for item in sorted_list:
+                if adress + count < item[0]:
+                    adress = item[0] - 1
+                    count = MAX_COUNT
+                    heatpump_data = self.read_coils(
+                        address=adress, count=MAX_COUNT, unit=1
+                    )
+                    if heatpump_data.isError():
+                        return False
 
-        self.data["Circulation pump running"] = decoded_values[9]
-        self.data["Compressor run"] = decoded_values[10]
-        self.data["Booster heater run"] = decoded_values[11]
-        self.data["Disinfection operation"] = decoded_values[12]
-        self.data["Defrost/Startup"] = decoded_values[14]
-        self.data["Hot Start"] = decoded_values[15]
-        self.data["3-way valve"] = decoded_values[16]
-        self.data["Operation mode"] = decoded_values[17]
+                    decoded_values = heatpump_data.bits
+                offset = item[0] - adress - 1
+                self.data[item[2]] = decoded_values[offset]
 
-        self.data["Leaving water temperature PHE"] = self.calculate_temp(
-            decoded_values[19]
-        )
-        self.data["Leaving water temperature BUH"] = self.calculate_temp(
-            decoded_values[20]
-        )
-        self.data["Return water temperature"] = self.calculate_temp(decoded_values[21])
-        self.data["Domestic Hot Water temperature"] = self.calculate_temp(
-            decoded_values[22]
-        )
-        self.data["Outside air temperature"] = self.calculate_temp(decoded_values[23])
-        self.data["Liquid refrigerant temperature"] = self.calculate_temp(
-            decoded_values[24]
-        )
+        sorted_list = sorted(ALTHERMA_4_DISCRETE_INPUTS, key=lambda x: x[0])
 
-        self.data["Flow rate"] = decoded_values[28] / 100.0
-        self.data["Remote controller room temperature"] = self.calculate_temp(
-            decoded_values[29]
-        )
-        self.data["Heat pump power consumption"] = self.calculate_power(
-            decoded_values[30]
-        )
-        self.data["DHW normal operation"] = decoded_values[31]
-        self.data["Space heating/cooling normal operation"] = decoded_values[32]
-        self.data["Leaving water Main Heating setpoint Lower limit"] = (
-            self.calculate_temp(decoded_values[33])
-        )
-        self.data["Leaving water Main Heating setpoint Upper limit"] = (
-            self.calculate_temp(decoded_values[34])
-        )
-        self.data["Leaving water Main Coolin setpoint Lower limit"] = (
-            self.calculate_temp(decoded_values[35])
-        )
-        self.data["Leaving water Main Cooling setpoint Upper limit"] = (
-            self.calculate_temp(decoded_values[36])
-        )
-        self.data["Leaving water Add Heating setpoint Lower limit"] = (
-            self.calculate_temp(decoded_values[37])
-        )
-        self.data["Leaving water Add Heating setpoint Upper limit"] = (
-            self.calculate_temp(decoded_values[38])
-        )
-        self.data["Leaving water Add Cooling setpoint Lower limit"] = (
-            self.calculate_temp(decoded_values[39])
-        )
-        self.data["Leaving water Add Cooling setpoint Upper limit"] = (
-            self.calculate_temp(decoded_values[40])
-        )
+        # Iterate over the sorted list
+        adress = 0
+        count = 0
+        MAX_COUNT = 41
+        for item in sorted_list:
+            if adress + count < item[0]:
+                adress = item[0] - 1
+                count = MAX_COUNT
+                heatpump_data = self.read_discrete_inputs(
+                    address=adress, count=MAX_COUNT, unit=1
+                )
+                if heatpump_data.isError():
+                    return False
+
+                decoded_values = heatpump_data.bits
+            offset = item[0] - adress - 1
+            self.data[item[2]] = decoded_values[offset]
         return True

@@ -6,6 +6,8 @@ from .const import (
     ATTR_MANUFACTURER,
     DAIKIN_ADDITIONAL_ZONE_NUMBER_TYPES,
     DAIKIN_NUMBER_TYPES,
+    DAIKIN_4_ADDITIONAL_ZONE_NUMBER_TYPES,
+    DAIKIN_4_NUMBER_TYPES,
     DAIKIN_A2A_NUMBER_TYPES,
 )
 
@@ -33,36 +35,18 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
 
     entities = []
     if not hub._is_air2air:
-        for number_info in DAIKIN_NUMBER_TYPES:
-            max = number_info[4]["max"]
-            if (
-                number_info[1] == "General_power_limit"
-                or number_info[1] == "Power_limit_during_Recommended_on_buffering"
-            ):
-                max = entry.data[CONF_MAX_POWER]
+        if hub.altherma_version == 3:
+            for number_info in DAIKIN_4_NUMBER_TYPES:
+                max = number_info[4]["max"]
+                if (
+                    number_info[1] == "General_power_limit"
+                    or number_info[1] == "Power_limit_during_Recommended_on_buffering"
+                ):
+                    max = entry.data[CONF_MAX_POWER]
 
-            if number_info[1] == "DHW_reheat_setpoint":
-                max = entry.data[CONF_MAX_WATER_TEMP]
+                if number_info[1] == "DHW_reheat_setpoint":
+                    max = entry.data[CONF_MAX_WATER_TEMP]
 
-            number = DaikinEKRHHNumber(
-                hub_name,
-                hub,
-                device_info,
-                number_info[0],
-                number_info[1],
-                number_info[2],
-                number_info[3],
-                dict(
-                    min=number_info[4]["min"],
-                    max=max,
-                    unit=number_info[4]["unit"],
-                    step=number_info[4]["step"],
-                ),
-            )
-            entities.append(number)
-
-        if hub._additional_zone:
-            for number_info in DAIKIN_ADDITIONAL_ZONE_NUMBER_TYPES:
                 number = DaikinEKRHHNumber(
                     hub_name,
                     hub,
@@ -73,12 +57,78 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
                     number_info[3],
                     dict(
                         min=number_info[4]["min"],
-                        max=number_info[4]["max"],
+                        max=max,
                         unit=number_info[4]["unit"],
                         step=number_info[4]["step"],
                     ),
                 )
                 entities.append(number)
+
+            if hub._additional_zone:
+                for number_info in DAIKIN_4_ADDITIONAL_ZONE_NUMBER_TYPES:
+                    number = DaikinEKRHHNumber(
+                        hub_name,
+                        hub,
+                        device_info,
+                        number_info[0],
+                        number_info[1],
+                        number_info[2],
+                        number_info[3],
+                        dict(
+                            min=number_info[4]["min"],
+                            max=number_info[4]["max"],
+                            unit=number_info[4]["unit"],
+                            step=number_info[4]["step"],
+                        ),
+                    )
+                    entities.append(number)
+        else:
+            for number_info in DAIKIN_4_NUMBER_TYPES:
+                max = number_info[4]["max"]
+                if (
+                    number_info[1] == "General_power_limit"
+                    or number_info[1] == "Power_limit_during_Recommended_on_buffering"
+                ):
+                    max = entry.data[CONF_MAX_POWER]
+
+                if number_info[1] == "DHW_reheat_setpoint":
+                    max = entry.data[CONF_MAX_WATER_TEMP]
+
+                number = DaikinEKRHHNumber(
+                    hub_name,
+                    hub,
+                    device_info,
+                    number_info[0],
+                    number_info[1],
+                    number_info[2],
+                    number_info[3],
+                    dict(
+                        min=number_info[4]["min"],
+                        max=max,
+                        unit=number_info[4]["unit"],
+                        step=number_info[4]["step"],
+                    ),
+                )
+                entities.append(number)
+
+            if hub._additional_zone:
+                for number_info in DAIKIN_4_ADDITIONAL_ZONE_NUMBER_TYPES:
+                    number = DaikinEKRHHNumber(
+                        hub_name,
+                        hub,
+                        device_info,
+                        number_info[0],
+                        number_info[1],
+                        number_info[2],
+                        number_info[3],
+                        dict(
+                            min=number_info[4]["min"],
+                            max=number_info[4]["max"],
+                            unit=number_info[4]["unit"],
+                            step=number_info[4]["step"],
+                        ),
+                    )
+                    entities.append(number)
     else:
         for number_info in DAIKIN_A2A_NUMBER_TYPES:
             max = number_info[4]["max"]
