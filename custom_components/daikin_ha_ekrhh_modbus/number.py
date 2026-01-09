@@ -36,7 +36,7 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
     entities = []
     if not hub._is_air2air:
         if hub.altherma_version == 3:
-            for number_info in DAIKIN_4_NUMBER_TYPES:
+            for number_info in DAIKIN_NUMBER_TYPES:
                 max = number_info[4]["max"]
                 if (
                     number_info[1] == "General_power_limit"
@@ -65,7 +65,7 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
                 entities.append(number)
 
             if hub._additional_zone:
-                for number_info in DAIKIN_4_ADDITIONAL_ZONE_NUMBER_TYPES:
+                for number_info in DAIKIN_ADDITIONAL_ZONE_NUMBER_TYPES:
                     number = DaikinEKRHHNumber(
                         hub_name,
                         hub,
