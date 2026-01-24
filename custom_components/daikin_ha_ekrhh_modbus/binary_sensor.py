@@ -11,6 +11,7 @@ from .const import (
 from homeassistant.const import (
     CONF_NAME,
 )
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
@@ -63,11 +64,12 @@ async def async_setup_entry(hass, entry, async_add_entities):
     return True
 
 
-class DaikinEKRHHBinarySensor(BinarySensorEntity):
+class DaikinEKRHHBinarySensor(CoordinatorEntity, BinarySensorEntity):
     """Representation of an Daikin EKRHH Modbus sensor."""
 
     def __init__(self, platform_name, hub, device_info, name, key, unit, icon):
         """Initialize the sensor."""
+        super().__init__(coordinator=hub)
         self._platform_name = platform_name
         self._hub = hub
         self._key = key
@@ -76,15 +78,8 @@ class DaikinEKRHHBinarySensor(BinarySensorEntity):
         self._icon = icon
         self._device_info = device_info
 
-    async def async_added_to_hass(self):
-        """Register callbacks."""
-        self._hub.async_add_daikin_ekrhh_sensor(self._modbus_data_updated)
-
-    async def async_will_remove_from_hass(self) -> None:
-        self._hub.async_remove_daikin_ekrhh_sensor(self._modbus_data_updated)
-
     @callback
-    def _modbus_data_updated(self):
+    def _handle_coordinator_update(self):
         self.async_write_ha_state()
 
     @callback

@@ -18,6 +18,8 @@ from homeassistant.components.number import (
     NumberEntity,
 )
 
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
 from homeassistant.core import callback
 
 _LOGGER = logging.getLogger(__name__)
@@ -153,13 +155,14 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
     async_add_entities(entities)
 
 
-class DaikinEKRHHNumber(NumberEntity):
+class DaikinEKRHHNumber(CoordinatorEntity, NumberEntity):
     """Representation of an DaikinEKRHH Modbus number."""
 
     def __init__(
         self, platform_name, hub, device_info, name, key, register, fmt, attrs
     ) -> None:
         """Initialize the selector."""
+        super().__init__(coordinator=hub)
         self._platform_name = platform_name
         self._hub = hub
         self._device_info = device_info
@@ -174,15 +177,8 @@ class DaikinEKRHHNumber(NumberEntity):
         if "unit" in attrs.keys():
             self._attr_native_unit_of_measurement = attrs["unit"]
 
-    async def async_added_to_hass(self) -> None:
-        """Register callbacks."""
-        self._hub.async_add_daikin_ekrhh_sensor(self._modbus_data_updated)
-
-    async def async_will_remove_from_hass(self) -> None:
-        self._hub.async_remove_daikin_ekrhh_sensor(self._modbus_data_updated)
-
     @callback
-    def _modbus_data_updated(self) -> None:
+    def _handle_coordinator_update(self) -> None:
         self.async_write_ha_state()
 
     @property
@@ -247,14 +243,12 @@ class DaikinEKRHHNumber(NumberEntity):
             _LOGGER.error(f"Invalid encoding format {self._fmt} for {self._key}")
             return
 
-        response = self._hub.write_registers(
-            unit=1, address=self._register, payload=payload
-        )
+        response = await self._hub._client.write_register(self._register, payload)
 
         if response.isError():
             _LOGGER.error(f"Could not write value {value} to {self._key}")
             return
-
+        await self.coordinator.async_request_refresh()
         self._hub.data[self._key] = value
         self.async_write_ha_state()
 

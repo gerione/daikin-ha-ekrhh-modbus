@@ -11,9 +11,9 @@ from .const import (
 
 from homeassistant.const import CONF_NAME
 from homeassistant.components.select import (
-    PLATFORM_SCHEMA,
     SelectEntity,
 )
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from homeassistant.core import callback
 
@@ -80,13 +80,14 @@ def get_key(my_dict, search):
     return None
 
 
-class DaikinHAEKRHHModbusSelect(SelectEntity):
+class DaikinHAEKRHHModbusSelect(CoordinatorEntity, SelectEntity):
     """Representation of an daikin_ekrhh Modbus select."""
 
     def __init__(
         self, platform_name, hub, device_info, name, key, register, options
     ) -> None:
         """Initialize the selector."""
+        super().__init__(coordinator=hub)
         self._platform_name = platform_name
         self._hub = hub
         self._device_info = device_info
@@ -97,15 +98,8 @@ class DaikinHAEKRHHModbusSelect(SelectEntity):
 
         self._attr_options = list(options.values())
 
-    async def async_added_to_hass(self) -> None:
-        """Register callbacks."""
-        self._hub.async_add_daikin_ekrhh_sensor(self._modbus_data_updated)
-
-    async def async_will_remove_from_hass(self) -> None:
-        self._hub.async_remove_daikin_ekrhh_sensor(self._modbus_data_updated)
-
     @callback
-    def _modbus_data_updated(self) -> None:
+    def _handle_coordinator_update(self) -> None:
         self.async_write_ha_state()
 
     @property
@@ -135,11 +129,12 @@ class DaikinHAEKRHHModbusSelect(SelectEntity):
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
         new_mode = get_key(self._option_dict, option)
-        result = self._hub.write_registers(
-            unit=1, address=self._register, payload=new_mode
-        )
-        if not result.isError():
+        response = await self._hub._client.write_register(self._register, new_mode)
+
+        if not response.isError():
             self._hub.data[self._key] = new_mode
+
+        await self.coordinator.async_request_refresh()
         self.async_write_ha_state()
 
     @property
