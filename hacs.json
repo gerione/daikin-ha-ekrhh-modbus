@@ -1,6 +1,5 @@
 {
   "name": "Daikin Altherma Modbus (EKRHH, ALTHERMA 4 direct)",
   "render_readme": true,
-  "iot_class": "local_polling",
   "homeassistant": "2025.9.0"
 }
