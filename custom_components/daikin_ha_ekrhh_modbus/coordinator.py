@@ -99,13 +99,15 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
 
         if self.altherma_version != 3:
             sorted_list = sorted(ALTHERMA_4_HOLDING, key=lambda x: x[0])
+            MAX_COUNT = 79
         else:
             sorted_list = sorted(ALTHERMA_3_HOLDING, key=lambda x: x[0])
+            MAX_COUNT = 60
 
         # Iterate over the sorted list
         adress = 0
         count = 0
-        MAX_COUNT = 60
+        
         for item in sorted_list:
             if adress + count < item[0]:
                 adress = item[0] - 1
@@ -174,12 +176,16 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
         if self.altherma_version == 3:
             return self.data
 
-        sorted_list = sorted(ALTHERMA_4_COILS, key=lambda x: x[0])
 
+        ALL_COILS = ALTHERMA_4_COILS
+        if self._additional_zone:
+            ALL_COILS.extend(ALTHERMA_4_COILS_ADDITIONAL_ZONE)
+
+        sorted_list = sorted(ALL_COILS, key=lambda x: x[0])
         # Iterate over the sorted list
         adress = 0
         count = 0
-        MAX_COUNT = 41
+        MAX_COUNT = 7
         for item in sorted_list:
             if adress + count < item[0]:
                 adress = item[0] - 1
@@ -194,33 +200,14 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
             offset = item[0] - adress - 1
             self.data[item[2]] = decoded_values[offset]
 
-        if self._additional_zone:
-            sorted_list = sorted(ALTHERMA_4_COILS_ADDITIONAL_ZONE, key=lambda x: x[0])
-
-            # Iterate over the sorted list
-            adress = 0
-            count = 0
-            MAX_COUNT = 41
-            for item in sorted_list:
-                if adress + count < item[0]:
-                    adress = item[0] - 1
-                    count = MAX_COUNT
-                    heatpump_data = await self._client.read_coils(
-                        address=adress, count=MAX_COUNT
-                    )
-                    if heatpump_data.isError():
-                        return self.data
-
-                    decoded_values = heatpump_data.bits
-                offset = item[0] - adress - 1
-                self.data[item[2]] = decoded_values[offset]
-
+        
+           
         sorted_list = sorted(ALTHERMA_4_DISCRETE_INPUTS, key=lambda x: x[0])
 
         # Iterate over the sorted list
         adress = 0
         count = 0
-        MAX_COUNT = 41
+        MAX_COUNT = 26
         for item in sorted_list:
             if adress + count < item[0]:
                 adress = item[0] - 1
