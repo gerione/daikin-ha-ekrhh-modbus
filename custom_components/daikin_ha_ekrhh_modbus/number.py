@@ -4,10 +4,10 @@ from typing import Optional, Any
 from .const import (
     DOMAIN,
     ATTR_MANUFACTURER,
-    DAIKIN_ADDITIONAL_ZONE_NUMBER_TYPES,
-    DAIKIN_NUMBER_TYPES,
-    DAIKIN_4_ADDITIONAL_ZONE_NUMBER_TYPES,
-    DAIKIN_4_NUMBER_TYPES,
+    ALTHERMA_3_HOLDING,
+    ALTHERMA_3_HOLDING_ADDITIONAL_ZONE,
+    ALTHERMA_4_HOLDING,
+    ALTHERMA_4_HOLDING_ADDITIONAL_ZONE,
     DAIKIN_A2A_NUMBER_TYPES,
 )
 
@@ -37,98 +37,94 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
 
     entities = []
     if not hub._is_air2air:
-        if hub.altherma_version == 3:
-            for number_info in DAIKIN_NUMBER_TYPES:
-                max = number_info[4]["max"]
+        if hub.altherma_version == "Altherma 3 (EKRHH)":
+            for number_info in ALTHERMA_3_HOLDING:
+                max = number_info[6]["max"]
                 if (
-                    number_info[1] == "General_power_limit"
-                    or number_info[1] == "Power_limit_during_Recommended_on_buffering"
+                    number_info[2] == f"{DOMAIN}_holding_58"
+                    or number_info[2] == f"{DOMAIN}_holding_59"
                 ):
                     max = entry.data[CONF_MAX_POWER]
 
-                if number_info[1] == "DHW_reheat_setpoint":
+                if number_info[2] == f"{DOMAIN}_holding_10":
                     max = entry.data[CONF_MAX_WATER_TEMP]
 
                 number = DaikinEKRHHNumber(
                     hub_name,
                     hub,
                     device_info,
-                    number_info[0],
                     number_info[1],
                     number_info[2],
+                    number_info[0] - 1,
                     number_info[3],
                     dict(
-                        min=number_info[4]["min"],
+                        min=number_info[6]["min"],
                         max=max,
-                        unit=number_info[4]["unit"],
-                        step=number_info[4]["step"],
+                        unit=number_info[6]["unit"],
+                        step=number_info[6]["step"],
                     ),
+                    number_info[5],
                 )
                 entities.append(number)
 
             if hub._additional_zone:
-                for number_info in DAIKIN_ADDITIONAL_ZONE_NUMBER_TYPES:
+                for number_info in ALTHERMA_3_HOLDING_ADDITIONAL_ZONE:
                     number = DaikinEKRHHNumber(
                         hub_name,
                         hub,
                         device_info,
-                        number_info[0],
                         number_info[1],
                         number_info[2],
+                        number_info[0] - 1,
                         number_info[3],
                         dict(
-                            min=number_info[4]["min"],
-                            max=number_info[4]["max"],
-                            unit=number_info[4]["unit"],
-                            step=number_info[4]["step"],
+                            min=number_info[6]["min"],
+                            max=max,
+                            unit=number_info[6]["unit"],
+                            step=number_info[6]["step"],
                         ),
+                        number_info[5],
                     )
                     entities.append(number)
         else:
-            for number_info in DAIKIN_4_NUMBER_TYPES:
-                max = number_info[4]["max"]
-                if (
-                    number_info[1] == "General_power_limit"
-                    or number_info[1] == "Power_limit_during_Recommended_on_buffering"
-                ):
-                    max = entry.data[CONF_MAX_POWER]
-
-                if number_info[1] == "DHW_reheat_setpoint":
-                    max = entry.data[CONF_MAX_WATER_TEMP]
+            for number_info in ALTHERMA_4_HOLDING:
+                max = number_info[6]["max"]
 
                 number = DaikinEKRHHNumber(
                     hub_name,
                     hub,
                     device_info,
-                    number_info[0],
                     number_info[1],
                     number_info[2],
+                    number_info[0] - 1,
                     number_info[3],
                     dict(
-                        min=number_info[4]["min"],
+                        min=number_info[6]["min"],
                         max=max,
-                        unit=number_info[4]["unit"],
-                        step=number_info[4]["step"],
+                        unit=number_info[6]["unit"],
+                        step=number_info[6]["step"],
                     ),
+                    number_info[5],
                 )
                 entities.append(number)
 
             if hub._additional_zone:
-                for number_info in DAIKIN_4_ADDITIONAL_ZONE_NUMBER_TYPES:
+                for number_info in ALTHERMA_4_HOLDING_ADDITIONAL_ZONE:
                     number = DaikinEKRHHNumber(
                         hub_name,
                         hub,
                         device_info,
-                        number_info[0],
                         number_info[1],
                         number_info[2],
+                        number_info[0] - 1,
                         number_info[3],
                         dict(
-                            min=number_info[4]["min"],
-                            max=number_info[4]["max"],
-                            unit=number_info[4]["unit"],
-                            step=number_info[4]["step"],
+                            min=number_info[6]["min"],
+                            max=max,
+                            unit=number_info[6]["unit"],
+                            step=number_info[6]["step"],
                         ),
+                        number_info[5],
                     )
                     entities.append(number)
     else:
@@ -140,16 +136,17 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
                 hub_name,
                 hub,
                 device_info,
-                number_info[0],
                 number_info[1],
                 number_info[2],
+                number_info[0] - 1,
                 number_info[3],
                 dict(
-                    min=number_info[4]["min"],
+                    min=number_info[6]["min"],
                     max=max,
-                    unit=number_info[4]["unit"],
-                    step=number_info[4]["step"],
+                    unit=number_info[6]["unit"],
+                    step=number_info[6]["step"],
                 ),
+                number_info[5],
             )
             entities.append(number)
     async_add_entities(entities)
@@ -159,7 +156,7 @@ class DaikinEKRHHNumber(CoordinatorEntity, NumberEntity):
     """Representation of an DaikinEKRHH Modbus number."""
 
     def __init__(
-        self, platform_name, hub, device_info, name, key, register, fmt, attrs
+        self, platform_name, hub, device_info, name, key, register, fmt, attrs, icon
     ) -> None:
         """Initialize the selector."""
         super().__init__(coordinator=hub)
@@ -176,6 +173,7 @@ class DaikinEKRHHNumber(CoordinatorEntity, NumberEntity):
         self._attr_native_step = attrs["step"]
         if "unit" in attrs.keys():
             self._attr_native_unit_of_measurement = attrs["unit"]
+        self._icon = icon
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -189,6 +187,11 @@ class DaikinEKRHHNumber(CoordinatorEntity, NumberEntity):
     @property
     def unique_id(self) -> Optional[str]:
         return f"{self._platform_name}_{self._key}"
+
+    @property
+    def icon(self):
+        """Return the sensor icon."""
+        return self._icon
 
     @property
     def should_poll(self) -> bool:
@@ -208,36 +211,10 @@ class DaikinEKRHHNumber(CoordinatorEntity, NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         """Change the selected value."""
         payload = 0
-        if self._fmt == "u32":
-            payload = self._hub._client.convert_to_registers(
-                int(value),
-                data_type=self._hub._client.DATATYPE.UINT32,
-                word_order="big",
-            )
-        elif self._fmt == "u16":
-            payload = self._hub._client.convert_to_registers(
-                int(value),
-                data_type=self._hub._client.DATATYPE.UINT16,
-                word_order="big",
-            )
-        elif self._fmt == "f":
-            payload = self._hub._client.convert_to_registers(
-                value,
-                data_type=self._hub._client.DATATYPE.FLOAT32,
-                word_order="big",
-            )
-        elif self._fmt == "pow":
-            payload = self._hub._client.convert_to_registers(
-                int(value * 100),
-                data_type=self._hub._client.DATATYPE.UINT16,
-                word_order="big",
-            )
-        elif self._fmt == "i16":
-            payload = self._hub._client.convert_to_registers(
-                int(value),
-                data_type=self._hub._client.DATATYPE.INT16,
-                word_order="big",
-            )
+        if self._fmt == "POW16":
+            payload = int(value * 100)
+        elif self._fmt == "INT16":
+            payload = int(value)
 
         else:
             _LOGGER.error(f"Invalid encoding format {self._fmt} for {self._key}")
@@ -254,17 +231,4 @@ class DaikinEKRHHNumber(CoordinatorEntity, NumberEntity):
 
     @property
     def available(self) -> bool:
-        if self._key in ("Unit error", "Unit error sub code", "Unit error code"):
-            return True
-        if self._hub._is_air2air:
-            return True
-        if "Unit error" not in self._hub.data or (
-            self._hub.data["Unit error"] != 0 and self._hub.data["Unit error"] != 2
-        ):
-            return False
-        if (
-            "Unit error sub code" not in self._hub.data
-            or self._hub.data["Unit error sub code"] != 32766
-        ):
-            return False
-        return True
+        return self._hub.checkAvailability(self._key)

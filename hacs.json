@@ -1,5 +1,5 @@
 {
-  "name": "Daikin Altherma Modbus (EKRHH, ALTHERMA 4 direct)",
+  "name": "Daikin Modbus (ALTHERMA 3 via EKRHH, ALTHERMA 4 direct) Integration",
   "render_readme": true,
   "homeassistant": "2025.9.0"
 }

@@ -1,11 +1,12 @@
 import logging
 from typing import Optional, Any
 from .const import (
-    ADDITIONAL_ZONE_SENSOR_TYPES,
-    SENSOR_TYPES,
+    ALTHERMA_3_INPUT,
+    ALTHERMA_3_INPUT_ADDITIONAL_ZONE,
+    ALTHERMA_4_INPUT,
+    ALTHERMA_4_INPUT_ADDITIONAL_ZONE,
     DOMAIN,
     ATTR_STATUS_DESCRIPTION,
-    DEVICE_STATUSES,
     ATTR_MANUFACTURER,
     A2A_SENSOR_TYPES,
 )
@@ -40,39 +41,64 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     entities = []
     if not hub._is_air2air:
-        for sensor_info in SENSOR_TYPES.values():
-            sensor = DaikinEKRHHSensor(
-                hub_name,
-                hub,
-                device_info,
-                sensor_info[0],
-                sensor_info[1],
-                sensor_info[2],
-                sensor_info[3],
-            )
-            entities.append(sensor)
-        if hub._additional_zone:
-            for sensor_info in ADDITIONAL_ZONE_SENSOR_TYPES.values():
+        if hub.altherma_version == "Altherma 3 (EKRHH)":
+            for sensor_info in ALTHERMA_3_INPUT:
                 sensor = DaikinEKRHHSensor(
                     hub_name,
                     hub,
                     device_info,
-                    sensor_info[0],
                     sensor_info[1],
                     sensor_info[2],
-                    sensor_info[3],
+                    sensor_info[4],
+                    sensor_info[5],
                 )
                 entities.append(sensor)
+            if hub._additional_zone:
+                for sensor_info in ALTHERMA_3_INPUT_ADDITIONAL_ZONE:
+                    sensor = DaikinEKRHHSensor(
+                        hub_name,
+                        hub,
+                        device_info,
+                        sensor_info[1],
+                        sensor_info[2],
+                        sensor_info[4],
+                        sensor_info[5],
+                    )
+                    entities.append(sensor)
+        else:
+            for sensor_info in ALTHERMA_4_INPUT:
+                sensor = DaikinEKRHHSensor(
+                    hub_name,
+                    hub,
+                    device_info,
+                    sensor_info[1],
+                    sensor_info[2],
+                    sensor_info[4],
+                    sensor_info[5],
+                )
+                entities.append(sensor)
+            if hub._additional_zone:
+                for sensor_info in ALTHERMA_4_INPUT_ADDITIONAL_ZONE:
+                    sensor = DaikinEKRHHSensor(
+                        hub_name,
+                        hub,
+                        device_info,
+                        sensor_info[1],
+                        sensor_info[2],
+                        sensor_info[4],
+                        sensor_info[5],
+                    )
+                    entities.append(sensor)
     else:
         for sensor_info in A2A_SENSOR_TYPES.values():
             sensor = DaikinEKRHHSensor(
                 hub_name,
                 hub,
                 device_info,
-                sensor_info[0],
                 sensor_info[1],
                 sensor_info[2],
-                sensor_info[3],
+                sensor_info[4],
+                sensor_info[5],
             )
             entities.append(sensor)
     async_add_entities(entities)
@@ -136,12 +162,6 @@ class DaikinEKRHHSensor(CoordinatorEntity, SensorEntity):
         return None
 
     @property
-    def extra_state_attributes(self):
-        if self._key in ["status", "statusvendor"] and self.state in DEVICE_STATUSES:
-            return {ATTR_STATUS_DESCRIPTION: DEVICE_STATUSES[self.state]}
-        return None
-
-    @property
     def should_poll(self) -> bool:
         """Data is delivered by the hub"""
         return False
@@ -152,17 +172,4 @@ class DaikinEKRHHSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def available(self) -> bool:
-        if self._key in ("Unit error", "Unit error sub code", "Unit error code"):
-            return True
-        if self._hub._is_air2air:
-            return True
-        if "Unit error" not in self._hub.data or (
-            self._hub.data["Unit error"] != 0 and self._hub.data["Unit error"] != 2
-        ):
-            return False
-        if (
-            "Unit error sub code" not in self._hub.data
-            or self._hub.data["Unit error sub code"] != 32766
-        ):
-            return False
-        return True
+        return self._hub.checkAvailability(self._key)

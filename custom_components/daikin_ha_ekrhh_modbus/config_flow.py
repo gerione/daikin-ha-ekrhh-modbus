@@ -28,7 +28,9 @@ DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_HOST): str,
         vol.Required(CONF_ALTHERMA_VERSION, default=DEFAULT_ALTHERMA_VERSION): str,
         vol.Required(CONF_PORT, default=DEFAULT_PORT): int,
-        vol.Required(CONF_ISAIR2AIR, default=DEFAULT_AIR2AIR): bool,
+        vol.Required(CONF_ALTHERMA_VERSION): vol.In(
+            ["Altherma 3 (EKRHH)", "Air2Air (EKRHH)", "Altherma 4"]
+        ),
         vol.Required(CONF_ADDITIONAL_ZONE, default=DEFAULT_ADDITIONAL_ZONE): bool,
         vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
         vol.Optional(CONF_MAX_POWER, default=DEFAULT_MAX_POWER): vol.All(
@@ -55,8 +57,9 @@ OPTIONS_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_HOST): str,
         vol.Required(CONF_PORT): int,
-        vol.Required(CONF_ALTHERMA_VERSION): str,
-        vol.Required(CONF_ISAIR2AIR): bool,
+        vol.Required(CONF_ALTHERMA_VERSION): vol.In(
+            ["Altherma 3 (EKRHH)", "Air2Air (EKRHH)", "Altherma 4"]
+        ),
         vol.Required(CONF_ADDITIONAL_ZONE): bool,
         vol.Required(CONF_MAX_POWER): vol.All(int, vol.Range(min=2, max=20)),
         vol.Required(CONF_MAX_WATER_TEMP): vol.All(int, vol.Range(min=50, max=80)),
@@ -94,7 +97,7 @@ class DaikinHaEkrhhModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     # The schema version of the entries that it creates
     # Home Assistant will call your migrate method if the version changes
     VERSION = 1
-    MINOR_VERSION = 4
+    MINOR_VERSION = 5
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
 
     async def async_step_user(self, user_input=None):

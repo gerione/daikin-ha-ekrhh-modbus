@@ -4,8 +4,10 @@ from typing import Optional, Dict, Any
 from .const import (
     DOMAIN,
     ATTR_MANUFACTURER,
-    DAIKIN_SELECT_TYPES,
-    DAIKIN_ADDITIONAL_ZONE_SELECT_TYPES,
+    ALTHERMA_3_HOLDING_SELECT,
+    ALTHERMA_3_HOLDING_SELECT_ADDITIONAL_ZONE,
+    ALTHERMA_4_HOLDING_SELECT,
+    ALTHERMA_4_HOLDING_SELECT_ADDITIONAL_ZONE,
     DAIKIN_A2A_SELECT_TYPES,
 )
 
@@ -32,40 +34,71 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
 
     entities = []
     if not hub._is_air2air:
-        for select_info in DAIKIN_SELECT_TYPES:
-            select = DaikinHAEKRHHModbusSelect(
-                hub_name,
-                hub,
-                device_info,
-                select_info[0],
-                select_info[1],
-                select_info[2],
-                select_info[3],
-            )
-            entities.append(select)
-
-        if hub._additional_zone:
-            for select_info in DAIKIN_ADDITIONAL_ZONE_SELECT_TYPES:
+        if hub.altherma_version == "Altherma 3 (EKRHH)":
+            for select_info in ALTHERMA_3_HOLDING_SELECT:
                 select = DaikinHAEKRHHModbusSelect(
                     hub_name,
                     hub,
                     device_info,
-                    select_info[0],
                     select_info[1],
                     select_info[2],
-                    select_info[3],
+                    select_info[0] - 1,
+                    select_info[6],
+                    select_info[5],
                 )
                 entities.append(select)
+
+            if hub._additional_zone:
+                for select_info in ALTHERMA_3_HOLDING_SELECT_ADDITIONAL_ZONE:
+                    select = DaikinHAEKRHHModbusSelect(
+                        hub_name,
+                        hub,
+                        device_info,
+                        select_info[1],
+                        select_info[2],
+                        select_info[0] - 1,
+                        select_info[6],
+                        select_info[5],
+                    )
+                    entities.append(select)
+        else:
+            for select_info in ALTHERMA_4_HOLDING_SELECT:
+                select = DaikinHAEKRHHModbusSelect(
+                    hub_name,
+                    hub,
+                    device_info,
+                    select_info[1],
+                    select_info[2],
+                    select_info[0] - 1,
+                    select_info[6],
+                    select_info[5],
+                )
+                entities.append(select)
+
+            if hub._additional_zone:
+                for select_info in ALTHERMA_4_HOLDING_SELECT_ADDITIONAL_ZONE:
+                    select = DaikinHAEKRHHModbusSelect(
+                        hub_name,
+                        hub,
+                        device_info,
+                        select_info[1],
+                        select_info[2],
+                        select_info[0] - 1,
+                        select_info[6],
+                        select_info[5],
+                    )
+                    entities.append(select)
     else:
         for select_info in DAIKIN_A2A_SELECT_TYPES:
             select = DaikinHAEKRHHModbusSelect(
                 hub_name,
                 hub,
                 device_info,
-                select_info[0],
                 select_info[1],
                 select_info[2],
-                select_info[3],
+                select_info[0] - 1,
+                select_info[6],
+                select_info[5],
             )
             entities.append(select)
     async_add_entities(entities)
@@ -84,7 +117,7 @@ class DaikinHAEKRHHModbusSelect(CoordinatorEntity, SelectEntity):
     """Representation of an daikin_ekrhh Modbus select."""
 
     def __init__(
-        self, platform_name, hub, device_info, name, key, register, options
+        self, platform_name, hub, device_info, name, key, register, options, icon
     ) -> None:
         """Initialize the selector."""
         super().__init__(coordinator=hub)
@@ -95,6 +128,7 @@ class DaikinHAEKRHHModbusSelect(CoordinatorEntity, SelectEntity):
         self._key = key
         self._register = register
         self._option_dict = options
+        self._icon = icon
 
         self._attr_options = list(options.values())
 
@@ -110,6 +144,11 @@ class DaikinHAEKRHHModbusSelect(CoordinatorEntity, SelectEntity):
     @property
     def unique_id(self) -> Optional[str]:
         return f"{self._platform_name}_{self._key}"
+
+    @property
+    def icon(self):
+        """Return the sensor icon."""
+        return self._icon
 
     @property
     def should_poll(self) -> bool:
@@ -143,17 +182,4 @@ class DaikinHAEKRHHModbusSelect(CoordinatorEntity, SelectEntity):
 
     @property
     def available(self) -> bool:
-        if self._key in ("Unit error", "Unit error sub code", "Unit error code"):
-            return True
-        if self._hub._is_air2air:
-            return True
-        if "Unit error" not in self._hub.data or (
-            self._hub.data["Unit error"] != 0 and self._hub.data["Unit error"] != 2
-        ):
-            return False
-        if (
-            "Unit error sub code" not in self._hub.data
-            or self._hub.data["Unit error sub code"] != 32766
-        ):
-            return False
-        return True
+        return self._hub.checkAvailability(self._key)

@@ -12,8 +12,13 @@ from pymodbus.client import AsyncModbusTcpClient
 
 from .const import (
     DOMAIN,
-    ALTHERMA_3_INPUT,
     ALTHERMA_3_HOLDING,
+    ALTHERMA_3_HOLDING_ADDITIONAL_ZONE,
+    ALTHERMA_3_HOLDING_SELECT,
+    ALTHERMA_3_HOLDING_SELECT_ADDITIONAL_ZONE,
+    ALTHERMA_3_INPUT,
+    ALTHERMA_3_INPUT_ADDITIONAL_ZONE,
+    ALTHERMA_3_INPUT_BINARY,
     ALTHERMA_4_COILS,
     ALTHERMA_4_COILS_ADDITIONAL_ZONE,
     ALTHERMA_4_HOLDING,
@@ -58,6 +63,42 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
         self.data = {}
         self.altherma_version = altherma_version
 
+    def checkAvailability(self, key):
+        if self._is_air2air:
+            return True
+        if key in (
+            f"{DOMAIN}_altherma3_input_21",
+            f"{DOMAIN}_altherma3_input_22",
+            f"{DOMAIN}_altherma3_input_23",
+            f"{DOMAIN}_altherma4_input_21",
+            f"{DOMAIN}_altherma4_input_22",
+            f"{DOMAIN}_altherma4_input_23",
+        ):
+            return True
+        if self.altherma_version == "Altherma 3 (EKRHH)":
+            if f"{DOMAIN}_altherma3_input_21" not in self.data or (
+                self.data[f"{DOMAIN}_altherma3_input_21"] != 0
+                and self.data[f"{DOMAIN}_altherma3_input_21"] != 2
+            ):
+                return False
+            if (
+                f"{DOMAIN}_altherma3_input_23" not in self.data
+                or self.data[f"{DOMAIN}_altherma3_input_23"] != 32766
+            ):
+                return False
+        else:
+            if f"{DOMAIN}_altherma4_input_21" not in self.data or (
+                self.data[f"{DOMAIN}_altherma4_input_21"] != 0
+                and self.data[f"{DOMAIN}_altherma4_input_21"] != 2
+            ):
+                return False
+            if (
+                f"{DOMAIN}_altherma4_input_23" not in self.data
+                or self.data[f"{DOMAIN}_altherma4_input_23"] != 32766
+            ):
+                return False
+        return True
+
     def calculate_value(self, value, sf):
         return value * 10**sf
 
@@ -79,12 +120,20 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
                 raise UpdateFailed(
                     f"Modbus Verbindung zu {self._host}:{self._port} fehlgeschlagen"
                 )
+        if not self._client.connected:
+            await self._client.connect()
+            await asyncio.sleep(0.1)
+            if not self._client.connected:
+                raise UpdateFailed(
+                    f"Modbus Verbindung zu {self._host}:{self._port} fehlgeschlagen"
+                )
         # Read only air2air data, which is limited right now
         if self._is_air2air:
             heatpump_data = await self._client.read_holding_registers(
                 address=1000, count=2
             )
             if heatpump_data.isError():
+                _LOGGER.warning(f"Input registers not readable: {heatpump_data}")
                 return self.data
             decoded_values = self._client.convert_from_registers(
                 heatpump_data.registers,
@@ -97,33 +146,61 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
             )
             return self.data
 
-        if self.altherma_version != 3:
+        if self.altherma_version != "Altherma 3 (EKRHH)":
             sorted_list = sorted(ALTHERMA_4_HOLDING, key=lambda x: x[0])
             MAX_COUNT = 79
+            heatpump_data = await self._client.read_holding_registers(
+                address=0, count=MAX_COUNT
+            )
+            if heatpump_data.isError():
+                _LOGGER.warning(f"Holding registers not readable: {heatpump_data}")
+                return self.data
+
+            decoded_values = self._client.convert_from_registers(
+                heatpump_data.registers,
+                data_type=self._client.DATATYPE.INT16,
+                word_order="big",
+            )
         else:
-            sorted_list = sorted(ALTHERMA_3_HOLDING, key=lambda x: x[0])
-            MAX_COUNT = 60
+            ALL_HOLDING = []
+            ALL_HOLDING.extend(ALTHERMA_3_HOLDING)
+            ALL_HOLDING.extend(ALTHERMA_3_HOLDING_SELECT)
 
-        # Iterate over the sorted list
-        adress = 0
-        count = 0
-        
-        for item in sorted_list:
-            if adress + count < item[0]:
-                adress = item[0] - 1
-                count = MAX_COUNT
-                heatpump_data = await self._client.read_holding_registers(
-                    address=adress, count=MAX_COUNT
-                )
-                if heatpump_data.isError():
-                    return self.data
+            if self._additional_zone:
+                ALL_HOLDING.extend(ALTHERMA_3_HOLDING_ADDITIONAL_ZONE)
+                ALL_HOLDING.extend(ALTHERMA_3_HOLDING_SELECT_ADDITIONAL_ZONE)
+            sorted_list = sorted(ALL_HOLDING, key=lambda x: x[0])
 
-                decoded_values = self._client.convert_from_registers(
+            heatpump_data = await self._client.read_holding_registers(
+                address=0, count=60
+            )
+            if heatpump_data.isError():
+                _LOGGER.warning(f"Holding registers not readable: {heatpump_data}")
+                return self.data
+
+            decoded_values = self._client.convert_from_registers(
+                heatpump_data.registers,
+                data_type=self._client.DATATYPE.INT16,
+                word_order="big",
+            )
+            heatpump_data = await self._client.read_holding_registers(
+                address=60, count=7
+            )
+            if heatpump_data.isError():
+                _LOGGER.warning(f"Holding registers not readable: {heatpump_data}")
+                return self.data
+
+            decoded_values.extend(
+                self._client.convert_from_registers(
                     heatpump_data.registers,
                     data_type=self._client.DATATYPE.INT16,
                     word_order="big",
                 )
-            offset = item[0] - adress - 1
+            )
+
+        # Iterate over the sorted list
+        for item in sorted_list:
+            offset = item[0] - 1
             if item[3] == "INT16":
                 self.data[item[2]] = decoded_values[offset]
             elif item[3] == "TEMP16":
@@ -137,30 +214,42 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
                     decoded_values[offset] & 0xFF
                 )
 
-        if self.altherma_version != 3:
+        if self.altherma_version != "Altherma 3 (EKRHH)":
             sorted_list = sorted(ALTHERMA_4_INPUT, key=lambda x: x[0])
-        else:
-            sorted_list = sorted(ALTHERMA_3_INPUT, key=lambda x: x[0])
-        # Iterate over the sorted list
-        adress = 0
-        count = 0
-        MAX_COUNT = 41
-        for item in sorted_list:
-            if adress + count < item[0]:
-                adress = item[0] - 1
-                count = MAX_COUNT
-                heatpump_data = await self._client.read_input_registers(
-                    address=adress, count=MAX_COUNT
-                )
-                if heatpump_data.isError():
-                    return self.data
+            heatpump_data = await self._client.read_input_registers(
+                address=20, count=67
+            )
+            if heatpump_data.isError():
+                _LOGGER.warning(f"Input registers not readable: {heatpump_data}")
+                return self.data
 
-                decoded_values = self._client.convert_from_registers(
-                    heatpump_data.registers,
-                    data_type=self._client.DATATYPE.INT16,
-                    word_order="big",
-                )
-            offset = item[0] - adress - 1
+            decoded_values = self._client.convert_from_registers(
+                heatpump_data.registers,
+                data_type=self._client.DATATYPE.INT16,
+                word_order="big",
+            )
+        else:
+            ALL_INPUT = []
+            ALL_INPUT.extend(ALTHERMA_3_INPUT)
+            ALL_INPUT.extend(ALTHERMA_3_INPUT_BINARY)
+
+            sorted_list = sorted(ALL_INPUT, key=lambda x: x[0])
+            heatpump_data = await self._client.read_input_registers(
+                address=20, count=41
+            )
+            if heatpump_data.isError():
+                _LOGGER.warning(f"Input registers not readable: {heatpump_data}")
+                return self.data
+
+            decoded_values = self._client.convert_from_registers(
+                heatpump_data.registers,
+                data_type=self._client.DATATYPE.INT16,
+                word_order="big",
+            )
+
+        # Iterate over the sorted list
+        for item in sorted_list:
+            offset = item[0] - 20 - 1
             if item[3] == "INT16":
                 self.data[item[2]] = decoded_values[offset]
             elif item[3] == "TEMP16":
@@ -173,52 +262,34 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
                 self.data[item[2]] = chr((decoded_values[offset] >> 8) & 0xFF) + chr(
                     decoded_values[offset] & 0xFF
                 )
-        if self.altherma_version == 3:
+        if self.altherma_version == "Altherma 3 (EKRHH)":
             return self.data
 
-
-        ALL_COILS = ALTHERMA_4_COILS
+        ALL_COILS = []
+        ALL_COILS.extend(ALTHERMA_4_COILS)
         if self._additional_zone:
             ALL_COILS.extend(ALTHERMA_4_COILS_ADDITIONAL_ZONE)
 
         sorted_list = sorted(ALL_COILS, key=lambda x: x[0])
         # Iterate over the sorted list
-        adress = 0
-        count = 0
-        MAX_COUNT = 7
-        for item in sorted_list:
-            if adress + count < item[0]:
-                adress = item[0] - 1
-                count = MAX_COUNT
-                heatpump_data = await self._client.read_coils(
-                    address=adress, count=MAX_COUNT
-                )
-                if heatpump_data.isError():
-                    return self.data
+        heatpump_data = await self._client.read_coils(address=0, count=7)
+        if heatpump_data.isError():
+            return self.data
 
-                decoded_values = heatpump_data.bits
-            offset = item[0] - adress - 1
+        decoded_values = heatpump_data.bits
+        for item in sorted_list:
+            offset = item[0] - 1
             self.data[item[2]] = decoded_values[offset]
 
-        
-           
         sorted_list = sorted(ALTHERMA_4_DISCRETE_INPUTS, key=lambda x: x[0])
 
         # Iterate over the sorted list
-        adress = 0
-        count = 0
-        MAX_COUNT = 26
-        for item in sorted_list:
-            if adress + count < item[0]:
-                adress = item[0] - 1
-                count = MAX_COUNT
-                heatpump_data = self._client.read_discrete_inputs(
-                    address=adress, count=MAX_COUNT
-                )
-                if heatpump_data.isError():
-                    return self.data
+        heatpump_data = self._client.read_discrete_inputs(address=0, count=MAX_COUNT)
+        if heatpump_data.isError():
+            return self.data
 
-                decoded_values = heatpump_data.bits
-            offset = item[0] - adress - 1
+        decoded_values = heatpump_data.bits
+        for item in sorted_list:
+            offset = item[0] - 1
             self.data[item[2]] = decoded_values[offset]
         return self.data

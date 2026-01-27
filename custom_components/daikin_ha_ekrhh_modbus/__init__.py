@@ -18,7 +18,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-PLATFORMS = ["binary_sensor", "number", "select", "sensor"]
+PLATFORMS = ["binary_sensor", "number", "select", "sensor", "switch"]
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -35,8 +35,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     port = entry.data[CONF_PORT]
     scan_interval = entry.data[CONF_SCAN_INTERVAL]
     additional_zone = entry.data[CONF_ADDITIONAL_ZONE]
-    is_air2air = entry.data[CONF_ISAIR2AIR]
     altherma_version = entry.data[CONF_ALTHERMA_VERSION]
+    is_air2air = altherma_version == "Air2Air (EKRHH)"
 
     hub = DaikinEKRHHModbusHub(
         hass,
@@ -95,8 +95,13 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
             new_data[CONF_MAX_POWER] = 20
             new_data[CONF_MAX_WATER_TEMP] = 60
 
-        if config_entry.minor_version < 4:
-            new_data[CONF_ALTHERMA_VERSION] = 3
+        if config_entry.minor_version < 5:
+            if config_entry.data[CONF_ISAIR2AIR]:
+                new_data[CONF_ALTHERMA_VERSION] = "Air2Air (EKRHH)"
+            elif config_entry.data.get(CONF_ALTHERMA_VERSION) == "4":
+                new_data[CONF_ALTHERMA_VERSION] = "Altherma 4"
+            else:
+                new_data[CONF_ALTHERMA_VERSION] = "Altherma 3 (EKRHH)"
 
         hass.config_entries.async_update_entry(
             config_entry, data=new_data, minor_version=3, version=1
