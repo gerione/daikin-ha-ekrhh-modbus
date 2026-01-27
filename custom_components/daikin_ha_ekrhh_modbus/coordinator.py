@@ -284,7 +284,7 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
         sorted_list = sorted(ALTHERMA_4_DISCRETE_INPUTS, key=lambda x: x[0])
 
         # Iterate over the sorted list
-        heatpump_data = self._client.read_discrete_inputs(address=0, count=MAX_COUNT)
+        heatpump_data = self._client.read_discrete_inputs(address=0, count=26)
         if heatpump_data.isError():
             return self.data
 
