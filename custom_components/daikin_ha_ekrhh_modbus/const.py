@@ -17,8 +17,6 @@ DEFAULT_MAX_WATER_TEMP = 60
 CONF_ALTHERMA_VERSION = "altherma_version"
 DEFAULT_ALTHERMA_VERSION = 3
 
-DEVICE_STATUSES = {1: "Off",2: "Sleeping (auto-shutdown) / Night mode",3: "Grid Monitoring/wake-up",4: "Inverter is ON and producing power",5: "Production (curtailed)",6: "Shutting down",7: "Fault",8: "Maintenance/setup", }
-
 DAIKIN_OP_MODE_OPTIONS = {0: "Auto",1: "Heating",2: "Cooling", }
 DAIKIN_SG_MODE_OPTIONS = {0: "Free",1: "Forced off",2: "Recommended on",3: "Forced on", }
 DAIKIN_ON_OFF_OPTIONS = {0: "Off",1: "On", }
@@ -75,7 +73,7 @@ ALTHERMA_3_INPUT = [
     [43,"Domestic Hot Water temperature",f"{DOMAIN}_altherma3_input_43","TEMP16","°C","mdi:temperature-celsius",],
     [44,"Outside air temperature",f"{DOMAIN}_altherma3_input_44","TEMP16","°C","mdi:temperature-celsius",],
     [45,"Liquid refrigerant temperature",f"{DOMAIN}_altherma3_input_45","TEMP16","°C","mdi:temperature-celsius",],
-    [49,"Flow rate",f"{DOMAIN}_altherma3_input_49","FLOW16",None,None,],
+    [49,"Flow rate",f"{DOMAIN}_altherma3_input_49","FLOW16","L/min",None,],
     [50,"Remote controller room temperature",f"{DOMAIN}_altherma3_input_50","TEMP16","°C","mdi:temperature-celsius",],
     [51,"Heat pump power consumption",f"{DOMAIN}_altherma3_input_51","POW16","kW","mdi:lightning-bolt"],
     [54,"Leaving water Main Heating setpoint Lower limit",f"{DOMAIN}_altherma3_input_54","TEMP16","°C","mdi:temperature-celsius",],
