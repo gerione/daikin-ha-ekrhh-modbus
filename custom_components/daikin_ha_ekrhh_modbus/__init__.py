@@ -96,7 +96,7 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
             new_data[CONF_MAX_WATER_TEMP] = 60
 
         if config_entry.minor_version < 5:
-            if config_entry.data[CONF_ISAIR2AIR]:
+            if CONF_ISAIR2AIR in config_entry.data and config_entry.data[CONF_ISAIR2AIR]:
                 new_data[CONF_ALTHERMA_VERSION] = "Air2Air (EKRHH)"
             elif config_entry.data.get(CONF_ALTHERMA_VERSION) == "4":
                 new_data[CONF_ALTHERMA_VERSION] = "Altherma 4"
