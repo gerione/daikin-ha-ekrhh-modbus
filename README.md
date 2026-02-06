@@ -9,7 +9,8 @@ The newest release also adds experimental support for the Altherma 4 heatpump.
 The latest information about the gateway can be found here: [EKRHH Daikin Homepage](https://www.daikin.at/de_at/produktsuche/product.html/EKRHH.html#Installer-reference-guide-documents-b7f056ea11)
 In this document also the modbus registers can be found. 
 ## Features
-- **Altherma 3 and 4 support ** 
+- **Altherma 3 and 4 support** 
+- **HomeHub Support** 
 - **Real-time monitoring** of heat pump status, temperatures, and energy usage.
 - **Climate control** (set target temperatures, modes, and fan speeds).
 - **Energy tracking** (power consumption, efficiency metrics).
@@ -18,9 +19,7 @@ In this document also the modbus registers can be found.
 ## Installation
 ### HACS
 1. Ensure [HACS](https://hacs.xyz/) is installed in your Home Assistant.
-2. Add this repository as a **custom repository** in HACS:
-   - Go to **HACS > Integrations > + (Add) > Custom Repository**.
-   - Enter `https://github.com/gerione/daikin-ha-ekrhh-modbus` and select **Integration**.
+2. Search "Daikin Modbus"
 3. Click **Install** and restart Home Assistant.
 
 ### Manually

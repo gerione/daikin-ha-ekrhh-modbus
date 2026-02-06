@@ -11,6 +11,9 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from pymodbus.client import AsyncModbusTcpClient
 
 from .const import (
+    ALTHERMA_4_HOLDING_ADDITIONAL_ZONE,
+    ALTHERMA_4_HOLDING_SELECT,
+    ALTHERMA_4_HOLDING_SELECT_ADDITIONAL_ZONE,
     DOMAIN,
     ALTHERMA_3_HOLDING,
     ALTHERMA_3_HOLDING_ADDITIONAL_ZONE,
@@ -23,6 +26,8 @@ from .const import (
     ALTHERMA_4_COILS_ADDITIONAL_ZONE,
     ALTHERMA_4_HOLDING,
     ALTHERMA_4_INPUT,
+    ALTHERMA_4_INPUT_BINARY,
+    ALTHERMA_4_INPUT_ADDITIONAL_ZONE,
     ALTHERMA_4_DISCRETE_INPUTS,
 )
 
@@ -147,7 +152,14 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
             return self.data
 
         if self.altherma_version != "Altherma 3 (EKRHH)":
-            sorted_list = sorted(ALTHERMA_4_HOLDING, key=lambda x: x[0])
+            ALL_HOLDING = []
+            ALL_HOLDING.extend(ALTHERMA_4_HOLDING)
+            ALL_HOLDING.extend(ALTHERMA_4_HOLDING_SELECT)
+            if self._additional_zone:
+                ALL_HOLDING.extend(ALTHERMA_4_HOLDING_ADDITIONAL_ZONE)
+                ALL_HOLDING.extend(ALTHERMA_4_HOLDING_SELECT_ADDITIONAL_ZONE)
+                
+            sorted_list = sorted(ALL_HOLDING, key=lambda x: x[0])
             MAX_COUNT = 79
             heatpump_data = await self._client.read_holding_registers(
                 address=0, count=MAX_COUNT
@@ -215,7 +227,12 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
                 )
 
         if self.altherma_version != "Altherma 3 (EKRHH)":
-            sorted_list = sorted(ALTHERMA_4_INPUT, key=lambda x: x[0])
+            ALL_INPUT = []
+            ALL_INPUT.extend(ALTHERMA_4_INPUT)
+            ALL_INPUT.extend(ALTHERMA_4_INPUT_BINARY)
+            if self._additional_zone:
+                ALL_INPUT.extend(ALTHERMA_4_INPUT_ADDITIONAL_ZONE)
+            sorted_list = sorted(ALL_INPUT, key=lambda x: x[0])
             heatpump_data = await self._client.read_input_registers(
                 address=20, count=67
             )
@@ -232,6 +249,8 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
             ALL_INPUT = []
             ALL_INPUT.extend(ALTHERMA_3_INPUT)
             ALL_INPUT.extend(ALTHERMA_3_INPUT_BINARY)
+            if self._additional_zone:
+                ALL_INPUT.extend(ALTHERMA_3_INPUT_ADDITIONAL_ZONE)
 
             sorted_list = sorted(ALL_INPUT, key=lambda x: x[0])
             heatpump_data = await self._client.read_input_registers(

@@ -79,7 +79,7 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
                         number_info[3],
                         dict(
                             min=number_info[6]["min"],
-                            max=max,
+                            max=number_info[6]["max"],
                             unit=number_info[6]["unit"],
                             step=number_info[6]["step"],
                         ),
@@ -120,7 +120,7 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
                         number_info[3],
                         dict(
                             min=number_info[6]["min"],
-                            max=max,
+                            max=number_info[6]["max"],
                             unit=number_info[6]["unit"],
                             step=number_info[6]["step"],
                         ),
