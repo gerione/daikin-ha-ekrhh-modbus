@@ -219,7 +219,9 @@ class DaikinEKRHHNumber(CoordinatorEntity, NumberEntity):
         else:
             _LOGGER.error(f"Invalid encoding format {self._fmt} for {self._key}")
             return
-
+        'Two complement for negative numbers'
+        if payload < 0:
+            payload = 65536 + payload
         response = await self._hub._client.write_register(self._register, payload)
 
         if response.isError():
