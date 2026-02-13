@@ -95,10 +95,10 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 hub_name,
                 hub,
                 device_info,
+                sensor_info[0],
                 sensor_info[1],
                 sensor_info[2],
-                sensor_info[4],
-                sensor_info[5],
+                sensor_info[3],
             )
             entities.append(sensor)
     async_add_entities(entities)

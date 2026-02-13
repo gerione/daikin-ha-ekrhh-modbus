@@ -136,17 +136,17 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
                 hub_name,
                 hub,
                 device_info,
+                number_info[0],
                 number_info[1],
                 number_info[2],
-                number_info[0] - 1,
                 number_info[3],
                 dict(
-                    min=number_info[6]["min"],
+                    min=number_info[4]["min"],
                     max=max,
-                    unit=number_info[6]["unit"],
-                    step=number_info[6]["step"],
+                    unit=number_info[4]["unit"],
+                    step=number_info[4]["step"],
                 ),
-                number_info[5],
+                None,  # No icon specified in DAIKIN_A2A_NUMBER_TYPES
             )
             entities.append(number)
     async_add_entities(entities)

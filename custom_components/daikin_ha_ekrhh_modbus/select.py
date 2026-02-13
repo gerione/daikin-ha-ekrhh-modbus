@@ -94,11 +94,11 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
                 hub_name,
                 hub,
                 device_info,
+                select_info[0],
                 select_info[1],
                 select_info[2],
-                select_info[0] - 1,
-                select_info[6],
-                select_info[5],
+                select_info[3],                
+                None,  # No icon specified in DAIKIN_A2A_SELECT_TYPES
             )
             entities.append(select)
     async_add_entities(entities)

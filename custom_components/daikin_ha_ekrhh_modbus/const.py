@@ -111,7 +111,7 @@ A2A_SENSOR_TYPES = {
 }
 
 DAIKIN_A2A_SELECT_TYPES = [
-    ["Smart grid", "A2A_Smart_Grid_operation_mode", 1000, DAIKIN_SG_MODE_OPTIONS]
+    ["Smart grid", "A2A_Smart_Grid_operation_mode", 1000, DAIKIN_SG_MODE_OPTIONS, ]
 ]
 DAIKIN_A2A_NUMBER_TYPES = [
     ["Power limit for Demand Control"," Power_limit_for_Demand_Control",1001,"POW16",{"min": 0, "max": 20, "step": 0.1, "unit": "kW"},]
