@@ -162,7 +162,7 @@ ALTHERMA_4_DISCRETE_INPUTS = [
 ]
 
 ALTHERMA_4_DISCRETE_INPUTS_ADDITIONAL_ZONE = [
-    [21,"Additional zone running",f"{DOMAIN}_altherma4_discrete_input_21", None, None],
+    [21,"Additional zone running",f"{DOMAIN}_altherma4_discrete_input_21","BIT", None, None],
 ]
 
 
