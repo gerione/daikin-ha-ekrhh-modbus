@@ -41,12 +41,12 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
             for number_info in ALTHERMA_3_HOLDING:
                 max = number_info[6]["max"]
                 if (
-                    number_info[2] == f"{DOMAIN}_holding_58"
-                    or number_info[2] == f"{DOMAIN}_holding_59"
+                    number_info[2] == f"{DOMAIN}_altherma3_holding_57"
+                    or number_info[2] == f"{DOMAIN}_altherma3_holding_58"
                 ):
                     max = entry.data[CONF_MAX_POWER]
 
-                if number_info[2] == f"{DOMAIN}_holding_10":
+                if number_info[2] == f"{DOMAIN}_altherma3_holding_10":
                     max = entry.data[CONF_MAX_WATER_TEMP]
 
                 number = DaikinEKRHHNumber(
@@ -89,6 +89,8 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
         else:
             for number_info in ALTHERMA_4_HOLDING:
                 max = number_info[6]["max"]
+                if number_info[2] == f"{DOMAIN}_altherma4_holding_58":
+                    max = entry.data[CONF_MAX_POWER]
 
                 number = DaikinEKRHHNumber(
                     hub_name,
@@ -219,7 +221,7 @@ class DaikinEKRHHNumber(CoordinatorEntity, NumberEntity):
         else:
             _LOGGER.error(f"Invalid encoding format {self._fmt} for {self._key}")
             return
-        'Two complement for negative numbers'
+        "Two complement for negative numbers"
         if payload < 0:
             payload = 65536 + payload
         response = await self._hub._client.write_register(self._register, payload)

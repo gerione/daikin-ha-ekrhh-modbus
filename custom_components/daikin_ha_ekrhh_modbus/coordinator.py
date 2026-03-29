@@ -158,9 +158,9 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
             if self._additional_zone:
                 ALL_HOLDING.extend(ALTHERMA_4_HOLDING_ADDITIONAL_ZONE)
                 ALL_HOLDING.extend(ALTHERMA_4_HOLDING_SELECT_ADDITIONAL_ZONE)
-                
+
             sorted_list = sorted(ALL_HOLDING, key=lambda x: x[0])
-            MAX_COUNT = 79
+            MAX_COUNT = 80
             heatpump_data = await self._client.read_holding_registers(
                 address=0, count=MAX_COUNT
             )
@@ -212,6 +212,8 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
 
         # Iterate over the sorted list
         for item in sorted_list:
+            if self.altherma_version != "Altherma 3 (EKRHH)":
+                _LOGGER.warning(f"Holding registers: {item[0]} - {item[1]}")
             offset = item[0] - 1
             if item[3] == "INT16":
                 self.data[item[2]] = decoded_values[offset]
