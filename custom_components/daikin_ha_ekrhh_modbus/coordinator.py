@@ -213,8 +213,6 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
 
         # Iterate over the sorted list
         for item in sorted_list:
-            if self.altherma_version != "Altherma 3 (EKRHH)":
-                _LOGGER.warning(f"Holding registers: {item[0]} - {item[1]}")
             offset = item[0] - 1
             if item[3] == "INT16":
                 self.data[item[2]] = decoded_values[offset]
