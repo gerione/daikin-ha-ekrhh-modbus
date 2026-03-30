@@ -29,6 +29,7 @@ from .const import (
     ALTHERMA_4_INPUT_BINARY,
     ALTHERMA_4_INPUT_ADDITIONAL_ZONE,
     ALTHERMA_4_DISCRETE_INPUTS,
+    ALTHERMA_4_DISCRETE_INPUTS_ADDITIONAL_ZONE 
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -302,8 +303,12 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
             offset = item[0] - 1
             self.data[item[2]] = decoded_values[offset]
 
-        sorted_list = sorted(ALTHERMA_4_DISCRETE_INPUTS, key=lambda x: x[0])
-
+        ALL_D_INPUTS = []
+        ALL_D_INPUTS.extend(ALTHERMA_4_DISCRETE_INPUTS)
+        
+        if self._additional_zone:
+            ALL_D_INPUTS.extend(ALTHERMA_4_DISCRETE_INPUTS_ADDITIONAL_ZONE )
+        sorted_list = sorted(ALL_D_INPUTS, key=lambda x: x[0])    
         # Iterate over the sorted list
         heatpump_data = await self._client.read_discrete_inputs(address=0, count=26)
         if heatpump_data.isError():
