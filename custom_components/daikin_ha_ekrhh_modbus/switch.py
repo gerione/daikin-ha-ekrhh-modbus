@@ -44,6 +44,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
                     device_info,
                     sensor_info[1],
                     sensor_info[2],
+                    sensor_info[0]-1,
                     sensor_info[4],
                     sensor_info[5],
                 )
@@ -57,6 +58,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
                             device_info,
                             sensor_info[1],
                             sensor_info[2],
+                            sensor_info[0]-1,
                             sensor_info[4],
                             sensor_info[5],
                         )
@@ -68,12 +70,13 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class DaikinEKRHHSwitch(CoordinatorEntity, BinarySensorEntity):
     """Representation of an Daikin EKRHH Modbus sensor."""
 
-    def __init__(self, platform_name, hub, device_info, name, key, unit, icon):
+    def __init__(self, platform_name, hub, device_info, name, key, register, unit, icon):
         """Initialize the sensor."""
         super().__init__(coordinator=hub)
         self._platform_name = platform_name
         self._hub = hub
         self._key = key
+        self._register = register
         self._name = name
         self._unit_of_measurement = unit
         self._icon = icon
@@ -116,20 +119,20 @@ class DaikinEKRHHSwitch(CoordinatorEntity, BinarySensorEntity):
 
     async def async_turn_off(self, **kwargs):
         """Turn the entity off."""
-        response = await self._hub._client.write_coil(self._key, False)
+        response = await self._hub._client.write_coil(self._register, False)
         if response.isError():
             _LOGGER.error(f"Could not turn off {self._key}")
 
     async def async_turn_on(self, **kwargs):
         """Turn the entity on."""
-        response = await self._hub._client.write_coil(self._key, True)
+        response = await self._hub._client.write_coil(self._register, True)
         if response.isError():
             _LOGGER.error(f"Could not turn on {self._key}")
 
     async def async_toggle(self, **kwargs):
         """Toggle the entity."""
         current_state = self.is_on
-        response = await self._hub._client.write_coil(self._key, not current_state)
+        response = await self._hub._client.write_coil(self._register, not current_state)
         if response.isError():
             _LOGGER.error(f"Could not toggle {self._key}")
 
