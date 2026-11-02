@@ -1,6 +1,8 @@
-import asyncio
 import logging
 
+from modbus_connection import ModbusTcpParams
+
+from homeassistant.components.modbus import async_get_unit
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
@@ -8,6 +10,8 @@ from .coordinator import DaikinEKRHHModbusHub
 
 from .const import (
     DOMAIN,
+    CONF_MODBUS_ADDRESS,
+    DEFAULT_MODBUS_ADDRESS,
     CONF_MAX_POWER,
     CONF_MAX_WATER_TEMP,
     CONF_ADDITIONAL_ZONE,
@@ -38,11 +42,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     altherma_version = entry.data[CONF_ALTHERMA_VERSION]
     is_air2air = altherma_version == "Air2Air (EKRHH)"
 
+    # The modbus integration owns the connection and shares it with any other
+    # integration talking to the same gateway; it is released on unload.
+    unit = async_get_unit(
+        hass,
+        entry,
+        ModbusTcpParams(host=host, port=port),
+        entry.data.get(CONF_MODBUS_ADDRESS, DEFAULT_MODBUS_ADDRESS),
+    )
+
     hub = DaikinEKRHHModbusHub(
         hass,
+        entry,
         name,
-        host,
-        port,
+        unit,
         scan_interval,
         additional_zone,
         is_air2air,
@@ -58,15 +71,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
 async def async_unload_entry(hass, entry):
     """Unload daikin_ekrhh mobus entry."""
-    unload_ok = all(
-        await asyncio.gather(
-            *[
-                hass.config_entries.async_forward_entry_unload(entry, component)
-                for component in PLATFORMS
-            ]
-        )
-    )
-    if not unload_ok:
+    if not await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         return False
 
     hass.data[DOMAIN].pop(entry.data["name"])
@@ -95,7 +100,11 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
             new_data[CONF_MAX_POWER] = 20
             new_data[CONF_MAX_WATER_TEMP] = 60
 
-        if config_entry.minor_version < 5:
+        # Older migrations stored minor version 3, so this step can run again on
+        # an entry that already holds a converted value; leave those untouched.
+        if config_entry.minor_version < 5 and new_data.get(
+            CONF_ALTHERMA_VERSION
+        ) not in ("Altherma 3 (EKRHH)", "Air2Air (EKRHH)", "Altherma 4"):
             if CONF_ISAIR2AIR in config_entry.data and config_entry.data[CONF_ISAIR2AIR]:
                 new_data[CONF_ALTHERMA_VERSION] = "Air2Air (EKRHH)"
             elif config_entry.data.get(CONF_ALTHERMA_VERSION) == "4":
@@ -103,8 +112,11 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
             else:
                 new_data[CONF_ALTHERMA_VERSION] = "Altherma 3 (EKRHH)"
 
+        if config_entry.minor_version < 6:
+            new_data.setdefault(CONF_MODBUS_ADDRESS, DEFAULT_MODBUS_ADDRESS)
+
         hass.config_entries.async_update_entry(
-            config_entry, data=new_data, minor_version=3, version=1
+            config_entry, data=new_data, minor_version=6, version=1
         )
 
     _LOGGER.debug(

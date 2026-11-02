@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
-import asyncio
 
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from pymodbus.client import AsyncModbusTcpClient
+from modbus_connection import ModbusError, ModbusExceptionError, ModbusUnit
+from modbus_connection.decode import decode_int16
 
 from .const import (
     ALTHERMA_4_HOLDING_ADDITIONAL_ZONE,
@@ -35,14 +35,14 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class DaikinEKRHHModbusHub(DataUpdateCoordinator):
-    """Thread safe wrapper class for pymodbus."""
+    """Poll the heat pump over a Modbus unit shared through the modbus integration."""
 
     def __init__(
         self,
         hass,
+        entry,
         name,
-        host,
-        port,
+        unit: ModbusUnit,
         scan_interval,
         additional_zone,
         is_air2air,
@@ -52,13 +52,12 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
         super().__init__(
             hass,
             _LOGGER,
+            config_entry=entry,
             name=DOMAIN,
             update_interval=timedelta(seconds=scan_interval),
         )
         self._hass = hass
-        self._client: AsyncModbusTcpClient | None = None
-        self._host = host
-        self._port = port
+        self._unit = unit
         self._name = name
         self._scan_interval = timedelta(seconds=scan_interval)
         self._additional_zone = additional_zone
@@ -115,35 +114,45 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
         # Scaling: /100, Range –327.68~327.67 kW
         return value * 1.0 / 100.0
 
+    async def _read_int16(self, read, address, count):
+        """Read a block of registers and decode each one as a signed 16-bit value."""
+        registers = await read(address=address, count=count)
+        return [decode_int16([register]) for register in registers]
+
+    async def async_write_register(self, address, value) -> bool:
+        """Write one holding register, returning whether the device accepted it."""
+        try:
+            await self._unit.write_register(address, value)
+        except ModbusError as err:
+            _LOGGER.error("Could not write register %s: %s", address, err)
+            return False
+        return True
+
+    async def async_write_coil(self, address, value) -> bool:
+        """Write one coil, returning whether the device accepted it."""
+        try:
+            await self._unit.write_coil(address, value)
+        except ModbusError as err:
+            _LOGGER.error("Could not write coil %s: %s", address, err)
+            return False
+        return True
+
     async def _async_update_data(self):
-        """Lese alle Input-Register blockweise."""
-        if self._client is None:
-            self._client = AsyncModbusTcpClient(self._host, port=self._port)
-            await self._client.connect()
-            await asyncio.sleep(0.1)
-            if not self._client.connected:
-                raise UpdateFailed(
-                    f"Modbus Verbindung zu {self._host}:{self._port} fehlgeschlagen"
-                )
-        if not self._client.connected:
-            await self._client.connect()
-            await asyncio.sleep(0.1)
-            if not self._client.connected:
-                raise UpdateFailed(
-                    f"Modbus Verbindung zu {self._host}:{self._port} fehlgeschlagen"
-                )
+        """Read all registers block by block."""
+        try:
+            return await self._async_read_all()
+        except ModbusExceptionError as err:
+            # The device answered but refused a block; keep the last known values.
+            _LOGGER.warning("Registers not readable: %s", err)
+            return self.data
+        except ModbusError as err:
+            raise UpdateFailed(f"Error communicating with the Daikin unit: {err}") from err
+
+    async def _async_read_all(self):
         # Read only air2air data, which is limited right now
         if self._is_air2air:
-            heatpump_data = await self._client.read_holding_registers(
-                address=1000, count=2
-            )
-            if heatpump_data.isError():
-                _LOGGER.warning(f"Input registers not readable: {heatpump_data}")
-                return self.data
-            decoded_values = self._client.convert_from_registers(
-                heatpump_data.registers,
-                data_type=self._client.DATATYPE.INT16,
-                word_order="big",
+            decoded_values = await self._read_int16(
+                self._unit.read_holding_registers, 1000, 2
             )
             self.data["A2A_Smart_Grid_operation_mode"] = decoded_values[0]
             self.data["Power_limit_for_Demand_Control"] = self.calculate_power(
@@ -161,17 +170,8 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
 
             sorted_list = sorted(ALL_HOLDING, key=lambda x: x[0])
             MAX_COUNT = 80
-            heatpump_data = await self._client.read_holding_registers(
-                address=0, count=MAX_COUNT
-            )
-            if heatpump_data.isError():
-                _LOGGER.warning(f"Holding registers not readable: {heatpump_data}")
-                return self.data
-
-            decoded_values = self._client.convert_from_registers(
-                heatpump_data.registers,
-                data_type=self._client.DATATYPE.INT16,
-                word_order="big",
+            decoded_values = await self._read_int16(
+                self._unit.read_holding_registers, 0, MAX_COUNT
             )
         else:
             ALL_HOLDING = []
@@ -183,31 +183,11 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
                 ALL_HOLDING.extend(ALTHERMA_3_HOLDING_SELECT_ADDITIONAL_ZONE)
             sorted_list = sorted(ALL_HOLDING, key=lambda x: x[0])
 
-            heatpump_data = await self._client.read_holding_registers(
-                address=0, count=60
+            decoded_values = await self._read_int16(
+                self._unit.read_holding_registers, 0, 60
             )
-            if heatpump_data.isError():
-                _LOGGER.warning(f"Holding registers not readable: {heatpump_data}")
-                return self.data
-
-            decoded_values = self._client.convert_from_registers(
-                heatpump_data.registers,
-                data_type=self._client.DATATYPE.INT16,
-                word_order="big",
-            )
-            heatpump_data = await self._client.read_holding_registers(
-                address=60, count=7
-            )
-            if heatpump_data.isError():
-                _LOGGER.warning(f"Holding registers not readable: {heatpump_data}")
-                return self.data
-
             decoded_values.extend(
-                self._client.convert_from_registers(
-                    heatpump_data.registers,
-                    data_type=self._client.DATATYPE.INT16,
-                    word_order="big",
-                )
+                await self._read_int16(self._unit.read_holding_registers, 60, 7)
             )
 
         # Iterate over the sorted list
@@ -235,17 +215,8 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
             if self._additional_zone:
                 ALL_INPUT.extend(ALTHERMA_4_INPUT_ADDITIONAL_ZONE)
             sorted_list = sorted(ALL_INPUT, key=lambda x: x[0])
-            heatpump_data = await self._client.read_input_registers(
-                address=20, count=67
-            )
-            if heatpump_data.isError():
-                _LOGGER.warning(f"Input registers not readable: {heatpump_data}")
-                return self.data
-
-            decoded_values = self._client.convert_from_registers(
-                heatpump_data.registers,
-                data_type=self._client.DATATYPE.INT16,
-                word_order="big",
+            decoded_values = await self._read_int16(
+                self._unit.read_input_registers, 20, 67
             )
         else:
             ALL_INPUT = []
@@ -255,17 +226,8 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
                 ALL_INPUT.extend(ALTHERMA_3_INPUT_ADDITIONAL_ZONE)
 
             sorted_list = sorted(ALL_INPUT, key=lambda x: x[0])
-            heatpump_data = await self._client.read_input_registers(
-                address=20, count=41
-            )
-            if heatpump_data.isError():
-                _LOGGER.warning(f"Input registers not readable: {heatpump_data}")
-                return self.data
-
-            decoded_values = self._client.convert_from_registers(
-                heatpump_data.registers,
-                data_type=self._client.DATATYPE.INT16,
-                word_order="big",
+            decoded_values = await self._read_int16(
+                self._unit.read_input_registers, 20, 41
             )
 
         # Iterate over the sorted list
@@ -293,11 +255,7 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
 
         sorted_list = sorted(ALL_COILS, key=lambda x: x[0])
         # Iterate over the sorted list
-        heatpump_data = await self._client.read_coils(address=0, count=7)
-        if heatpump_data.isError():
-            return self.data
-
-        decoded_values = heatpump_data.bits
+        decoded_values = await self._unit.read_coils(address=0, count=7)
         for item in sorted_list:
             offset = item[0] - 1
             self.data[item[2]] = decoded_values[offset]
@@ -305,11 +263,7 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
         sorted_list = sorted(ALTHERMA_4_DISCRETE_INPUTS, key=lambda x: x[0])
 
         # Iterate over the sorted list
-        heatpump_data = self._client.read_discrete_inputs(address=0, count=26)
-        if heatpump_data.isError():
-            return self.data
-
-        decoded_values = heatpump_data.bits
+        decoded_values = await self._unit.read_discrete_inputs(address=0, count=26)
         for item in sorted_list:
             offset = item[0] - 1
             self.data[item[2]] = decoded_values[offset]

@@ -17,6 +17,8 @@ In this document also the modbus registers can be found.
 - **Modbus TCP/RTU** support.
 
 ## Installation
+Requires Home Assistant 2026.9 or newer. The connection to the gateway is handled by Home Assistant's built-in Modbus integration, so it can be shared with other integrations talking to the same device.
+
 ### HACS
 1. Ensure [HACS](https://hacs.xyz/) is installed in your Home Assistant.
 2. Search "Daikin Modbus"

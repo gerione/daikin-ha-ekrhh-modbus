@@ -168,9 +168,7 @@ class DaikinHAEKRHHModbusSelect(CoordinatorEntity, SelectEntity):
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
         new_mode = get_key(self._option_dict, option)
-        response = await self._hub._client.write_register(self._register, new_mode)
-
-        if not response.isError():
+        if await self._hub.async_write_register(self._register, new_mode):
             self._hub.data[self._key] = new_mode
 
         await self.coordinator.async_request_refresh()

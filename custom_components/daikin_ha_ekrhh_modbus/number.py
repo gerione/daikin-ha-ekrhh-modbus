@@ -224,9 +224,7 @@ class DaikinEKRHHNumber(CoordinatorEntity, NumberEntity):
         "Two complement for negative numbers"
         if payload < 0:
             payload = 65536 + payload
-        response = await self._hub._client.write_register(self._register, payload)
-
-        if response.isError():
+        if not await self._hub.async_write_register(self._register, payload):
             _LOGGER.error(f"Could not write value {value} to {self._key}")
             return
         await self.coordinator.async_request_refresh()

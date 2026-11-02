@@ -14,9 +14,9 @@ from homeassistant.const import (
 )
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from homeassistant.components.binary_sensor import (
-    BinarySensorEntity,
-    BinarySensorDeviceClass,
+from homeassistant.components.switch import (
+    SwitchEntity,
+    SwitchDeviceClass,
 )
 
 from homeassistant.core import callback
@@ -44,6 +44,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
                     device_info,
                     sensor_info[1],
                     sensor_info[2],
+                    sensor_info[0] - 1,
                     sensor_info[4],
                     sensor_info[5],
                 )
@@ -57,6 +58,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
                             device_info,
                             sensor_info[1],
                             sensor_info[2],
+                            sensor_info[0] - 1,
                             sensor_info[4],
                             sensor_info[5],
                         )
@@ -65,15 +67,18 @@ async def async_setup_entry(hass, entry, async_add_entities):
     return True
 
 
-class DaikinEKRHHSwitch(CoordinatorEntity, BinarySensorEntity):
-    """Representation of an Daikin EKRHH Modbus sensor."""
+class DaikinEKRHHSwitch(CoordinatorEntity, SwitchEntity):
+    """Representation of a writable Daikin EKRHH Modbus coil."""
 
-    def __init__(self, platform_name, hub, device_info, name, key, unit, icon):
+    def __init__(
+        self, platform_name, hub, device_info, name, key, register, unit, icon
+    ):
         """Initialize the sensor."""
         super().__init__(coordinator=hub)
         self._platform_name = platform_name
         self._hub = hub
         self._key = key
+        self._register = register
         self._name = name
         self._unit_of_measurement = unit
         self._icon = icon
@@ -104,11 +109,13 @@ class DaikinEKRHHSwitch(CoordinatorEntity, BinarySensorEntity):
 
     @property
     def device_class(self):
-        return BinarySensorDeviceClass.RUNNING
+        return SwitchDeviceClass.SWITCH
 
     @property
     def is_on(self):
-        return self._hub.data[self._key] == 1
+        if self._key not in self._hub.data:
+            return None
+        return bool(self._hub.data[self._key])
 
     @property
     def device_info(self) -> Optional[dict[str, Any]]:
@@ -116,22 +123,20 @@ class DaikinEKRHHSwitch(CoordinatorEntity, BinarySensorEntity):
 
     async def async_turn_off(self, **kwargs):
         """Turn the entity off."""
-        response = await self._hub._client.write_coil(self._key, False)
-        if response.isError():
-            _LOGGER.error(f"Could not turn off {self._key}")
+        await self._async_write(False)
 
     async def async_turn_on(self, **kwargs):
         """Turn the entity on."""
-        response = await self._hub._client.write_coil(self._key, True)
-        if response.isError():
-            _LOGGER.error(f"Could not turn on {self._key}")
+        await self._async_write(True)
 
-    async def async_toggle(self, **kwargs):
-        """Toggle the entity."""
-        current_state = self.is_on
-        response = await self._hub._client.write_coil(self._key, not current_state)
-        if response.isError():
-            _LOGGER.error(f"Could not toggle {self._key}")
+    async def _async_write(self, value: bool) -> None:
+        """Write the coil and show the new state right away."""
+        if not await self._hub.async_write_coil(self._register, value):
+            _LOGGER.error(f"Could not turn {'on' if value else 'off'} {self._key}")
+            return
+        self._hub.data[self._key] = value
+        self.async_write_ha_state()
+        await self.coordinator.async_request_refresh()
 
     @property
     def available(self) -> bool:
