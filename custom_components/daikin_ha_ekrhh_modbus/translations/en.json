@@ -1,50 +1,605 @@
 {
-  "config": {
-    "title": "Daikin EKRHH Modbus",
-    "step": {
-      "user": {
-        "title": "Define your Daikin EKRHH modbus connection",
-        "data": {
-          "host": "The ip-address of your Daikin EKRHH device",
-          "name": "The prefix to be used for your Daikin EKRHH sensors",
-          "port": "The TCP port on which to connect to the Daikin EKRHH",
-          "modbus_address": "The modbus address (unit ID) of the Daikin unit",
-          "scan_interval": "The modbus registers polling interval [s]",
-          "additional_zone": "Is there an addtional heating zone present?",
-          "is_air_to_air_heatpump": "Is it an Air to Air heatpump?"
+    "config": {
+        "flow_title": "Daikin EKRHH Modbus",
+        "step": {
+            "user": {
+                "title": "Define your Daikin EKRHH modbus connection",
+                "data": {
+                    "host": "The ip-address of your Daikin EKRHH device",
+                    "name": "The prefix to be used for your Daikin EKRHH sensors",
+                    "port": "The TCP port on which to connect to the Daikin EKRHH",
+                    "modbus_address": "The modbus address (unit ID) of the Daikin unit",
+                    "scan_interval": "The modbus registers polling interval [s]",
+                    "additional_zone": "Is there an addtional heating zone present?",
+                    "is_air_to_air_heatpump": "Is it an Air to Air heatpump?",
+                    "max_power": "Maximum power consumption [kW]:",
+                    "max_water_temp": "Maximum water temperature:",
+                    "climate_control": "Control the main zone climate entity by"
+                }
+            }
+        },
+        "error": {
+            "already_configured": "Device is already configured",
+            "cannot_connect": "Could not read from the Daikin unit. Check the host, port and modbus address."
+        },
+        "abort": {
+            "already_configured": "Device is already configured"
         }
-      }
     },
-    "error": {
-      "already_configured": "Device is already configured",
-      "cannot_connect": "Could not read from the Daikin unit. Check the host, port and modbus address."
-    },
-    "abort": {
-      "already_configured": "Device is already configured"
-    }
-  },
-  "options": {
-    "flow_title": "Daikin EKRHH Modbus",
-    "step": {
-      "init": {
-        "title": "Define your Daikin EKRHH modbus connection",
-        "data": {
-          "host": "The ip-address of your Daikin EKRHH device",
-          "name": "The prefix to be used for your Daikin EKRHH sensors",
-          "port": "The TCP port on which to connect to the Daikin EKRHH",
-          "modbus_address": "The modbus address (unit ID) of the Daikin unit",
-          "scan_interval": "The modbus registers polling interval [s]",
-          "additional_zone": "Is there an addtional heating zone present?",
-          "is_air_to_air_heatpump": "Is it an Air to Air heatpump?"
+    "options": {
+        "flow_title": "Daikin EKRHH Modbus",
+        "step": {
+            "init": {
+                "title": "Define your Daikin EKRHH modbus connection",
+                "data": {
+                    "host": "The ip-address of your Daikin EKRHH device",
+                    "name": "The prefix to be used for your Daikin EKRHH sensors",
+                    "port": "The TCP port on which to connect to the Daikin EKRHH",
+                    "modbus_address": "The modbus address (unit ID) of the Daikin unit",
+                    "scan_interval": "The modbus registers polling interval [s]",
+                    "additional_zone": "Is there an addtional heating zone present?",
+                    "is_air_to_air_heatpump": "Is it an Air to Air heatpump?",
+                    "max_power": "Maximum power consumption [kW]:",
+                    "max_water_temp": "Maximum water temperature:",
+                    "climate_control": "Control the main zone climate entity by"
+                }
+            }
+        },
+        "error": {
+            "already_configured": "Device is already configured",
+            "cannot_connect": "Could not read from the Daikin unit. Check the host, port and modbus address."
+        },
+        "abort": {
+            "already_configured": "Device is already configured"
         }
-      }
     },
-    "error": {
-      "already_configured": "Device is already configured",
-      "cannot_connect": "Could not read from the Daikin unit. Check the host, port and modbus address."
+    "entity": {
+        "sensor": {
+            "altherma3_input_21": {
+                "name": "Unit error"
+            },
+            "altherma3_input_22": {
+                "name": "Unit error code"
+            },
+            "altherma3_input_23": {
+                "name": "Unit error sub code"
+            },
+            "altherma3_input_38": {
+                "name": "Operation mode read"
+            },
+            "altherma3_input_40": {
+                "name": "Leaving water temperature PHE"
+            },
+            "altherma3_input_41": {
+                "name": "Leaving water temperature BUH"
+            },
+            "altherma3_input_42": {
+                "name": "Return water temperature"
+            },
+            "altherma3_input_43": {
+                "name": "Domestic Hot Water temperature"
+            },
+            "altherma3_input_44": {
+                "name": "Outside air temperature"
+            },
+            "altherma3_input_45": {
+                "name": "Liquid refrigerant temperature"
+            },
+            "altherma3_input_49": {
+                "name": "Flow rate"
+            },
+            "altherma3_input_50": {
+                "name": "Remote controller room temperature"
+            },
+            "altherma3_input_51": {
+                "name": "Heat pump power consumption"
+            },
+            "altherma3_input_54": {
+                "name": "Leaving water Main Heating setpoint Lower limit"
+            },
+            "altherma3_input_55": {
+                "name": "Leaving water Main Heating setpoint Upper limit"
+            },
+            "altherma3_input_56": {
+                "name": "Leaving water Main Cooling setpoint Lower limit"
+            },
+            "altherma3_input_57": {
+                "name": "Leaving water Main Cooling setpoint Upper limit"
+            },
+            "altherma3_input_58": {
+                "name": "Leaving water Add Heating setpoint Lower limit"
+            },
+            "altherma3_input_59": {
+                "name": "Leaving water Add Heating setpoint Upper limit"
+            },
+            "altherma3_input_60": {
+                "name": "Leaving water Add Cooling setpoint Lower limit"
+            },
+            "altherma3_input_61": {
+                "name": "Leaving water Add Cooling setpoint Upper limit"
+            },
+            "altherma4_input_21": {
+                "name": "Unit abnormality"
+            },
+            "altherma4_input_22": {
+                "name": "Unit abnormality Code"
+            },
+            "altherma4_input_23": {
+                "name": "Unit abnormality Sub Code"
+            },
+            "altherma4_input_40": {
+                "name": "Leaving Water Temperature pre-PHE"
+            },
+            "altherma4_input_41": {
+                "name": "Leaving Water Temperature pre-BUH"
+            },
+            "altherma4_input_42": {
+                "name": "Return Water Temperature"
+            },
+            "altherma4_input_43": {
+                "name": "Domestic Hot Water Temperature"
+            },
+            "altherma4_input_44": {
+                "name": "Outside Air Temperature"
+            },
+            "altherma4_input_45": {
+                "name": "Liquid Refrigerant Temperature"
+            },
+            "altherma4_input_49": {
+                "name": "Flow Rate"
+            },
+            "altherma4_input_50": {
+                "name": "Remote controller room temperature (main)"
+            },
+            "altherma4_input_51": {
+                "name": "Heatpump power consumption"
+            },
+            "altherma4_input_54": {
+                "name": "Leaving Water Main Heating Setpoint Lower limit"
+            },
+            "altherma4_input_55": {
+                "name": "Leaving Water Main Heating Setpoint Upper limit"
+            },
+            "altherma4_input_56": {
+                "name": "Leaving Water Main Cooling Setpoint Lower limit"
+            },
+            "altherma4_input_57": {
+                "name": "Leaving Water Main Cooling Setpoint Upper limit"
+            },
+            "altherma4_input_63": {
+                "name": "Disinfaction state"
+            },
+            "altherma4_input_65": {
+                "name": "Demand response mode"
+            },
+            "altherma4_input_66": {
+                "name": "Bypass Valve Position"
+            },
+            "altherma4_input_67": {
+                "name": "Tank Valve Position"
+            },
+            "altherma4_input_68": {
+                "name": "Circulation Pump Speed"
+            },
+            "altherma4_input_69": {
+                "name": "Mixed Pump PWM in Mixing kit"
+            },
+            "altherma4_input_70": {
+                "name": "Direct Pump PWM in Mixing kit"
+            },
+            "altherma4_input_71": {
+                "name": "Mixing Valve Position in Mixing kit"
+            },
+            "altherma4_input_72": {
+                "name": "Mixing Leaving Water Temperature in Mixing kit"
+            },
+            "altherma4_input_73": {
+                "name": "Spaceheating/cooling target for main zone in Mixing kit"
+            },
+            "altherma4_input_74": {
+                "name": "Leaving Water Temperature pre-PHE outdoor"
+            },
+            "altherma4_input_75": {
+                "name": "Leaving Water Temperature Tank valve"
+            },
+            "altherma4_input_76": {
+                "name": "Domestic Hot Water Upper Temperature"
+            },
+            "altherma4_input_77": {
+                "name": "Domestic Hot Water Lower Temperature"
+            },
+            "altherma4_input_79": {
+                "name": "Water pressure"
+            },
+            "altherma4_input_80": {
+                "name": "Spaceheating/cooling target for main zone"
+            },
+            "altherma4_input_82": {
+                "name": "Abnormality counter (user)"
+            },
+            "altherma4_input_83": {
+                "name": "Unit operation mode"
+            },
+            "altherma4_input_84": {
+                "name": "Room Heating Setpoint Lower limit"
+            },
+            "altherma4_input_85": {
+                "name": "Room Heating Setpoint Upper limit"
+            },
+            "altherma4_input_86": {
+                "name": "Room Cooling Setpoint Lower limit"
+            },
+            "altherma4_input_87": {
+                "name": "Room Cooling Setpoint Upper limit"
+            },
+            "altherma4_input_58": {
+                "name": "Leaving Water Add Heating Setpoint Lower limit"
+            },
+            "altherma4_input_59": {
+                "name": "Leaving Water Add Heating Setpoint Upper limit"
+            },
+            "altherma4_input_60": {
+                "name": "Leaving Water Add Cooling Setpoint Lower limit"
+            },
+            "altherma4_input_61": {
+                "name": "Leaving Water Add Cooling Setpoint Upper limit"
+            },
+            "altherma4_input_78": {
+                "name": "Remote controller room temperature (add)"
+            },
+            "altherma4_input_81": {
+                "name": "Spaceheating/cooling target for add zone"
+            },
+            "a2a_smart_grid_operation_mode": {
+                "name": "Smart Grid operation mode"
+            },
+            "power_limit_for_demand_control": {
+                "name": "Power limit for Demand Control"
+            },
+            "fault_code": {
+                "name": "Fault code"
+            }
+        },
+        "binary_sensor": {
+            "altherma3_input_30": {
+                "name": "Circulation pump running"
+            },
+            "altherma3_input_31": {
+                "name": "Compressor run"
+            },
+            "altherma3_input_32": {
+                "name": "Booster heater run"
+            },
+            "altherma3_input_33": {
+                "name": "Disinfection operation"
+            },
+            "altherma3_input_35": {
+                "name": "Defrost/Startup"
+            },
+            "altherma3_input_36": {
+                "name": "Hot Start"
+            },
+            "altherma3_input_37": {
+                "name": "3-way valve"
+            },
+            "altherma3_input_52": {
+                "name": "DHW normal operation"
+            },
+            "altherma3_input_53": {
+                "name": "Space heating/cooling normal operation"
+            },
+            "altherma4_input_30": {
+                "name": "Circulation Pump Running"
+            },
+            "altherma4_input_31": {
+                "name": "Compressor Run"
+            },
+            "altherma4_input_32": {
+                "name": "Booster Heater Run"
+            },
+            "altherma4_input_33": {
+                "name": "Disinfection Operation"
+            },
+            "altherma4_input_35": {
+                "name": "Defrost/restart"
+            },
+            "altherma4_input_36": {
+                "name": "Hot Start"
+            },
+            "altherma4_input_37": {
+                "name": "3-Way Valve"
+            },
+            "altherma4_input_38": {
+                "name": "Operation Mode"
+            },
+            "altherma4_input_52": {
+                "name": "DHW normal operation"
+            },
+            "altherma4_input_53": {
+                "name": "Space heating/cooling normal operation"
+            },
+            "altherma4_input_64": {
+                "name": "Holiday mode"
+            },
+            "altherma4_discrete_input_1": {
+                "name": "Shutoff valve"
+            },
+            "altherma4_discrete_input_2": {
+                "name": "Backup Heater Relay 1"
+            },
+            "altherma4_discrete_input_3": {
+                "name": "Backup Heater Relay 2"
+            },
+            "altherma4_discrete_input_4": {
+                "name": "Backup Heater Relay 3"
+            },
+            "altherma4_discrete_input_5": {
+                "name": "Backup Heater Relay 4"
+            },
+            "altherma4_discrete_input_6": {
+                "name": "Backup Heater Relay 5"
+            },
+            "altherma4_discrete_input_7": {
+                "name": "Backup Heater Relay 6"
+            },
+            "altherma4_discrete_input_8": {
+                "name": "Booster Heater"
+            },
+            "altherma4_discrete_input_9": {
+                "name": "Tank Boiler"
+            },
+            "altherma4_discrete_input_10": {
+                "name": "Bivalent"
+            },
+            "altherma4_discrete_input_11": {
+                "name": "Compressor Run"
+            },
+            "altherma4_discrete_input_12": {
+                "name": "Quiet mode active"
+            },
+            "altherma4_discrete_input_13": {
+                "name": "Holiday active"
+            },
+            "altherma4_discrete_input_14": {
+                "name": "Antifrost status"
+            },
+            "altherma4_discrete_input_15": {
+                "name": "Water pipe freeze prevention status"
+            },
+            "altherma4_discrete_input_16": {
+                "name": "Disinfection Operation"
+            },
+            "altherma4_discrete_input_17": {
+                "name": "Defrost"
+            },
+            "altherma4_discrete_input_18": {
+                "name": "Hot start"
+            },
+            "altherma4_discrete_input_19": {
+                "name": "DHW running"
+            },
+            "altherma4_discrete_input_20": {
+                "name": "Main zone running"
+            },
+            "altherma4_discrete_input_22": {
+                "name": "Powerful tank heatup request"
+            },
+            "altherma4_discrete_input_23": {
+                "name": "Manual tank heatup request"
+            },
+            "altherma4_discrete_input_24": {
+                "name": "Emergency active"
+            },
+            "altherma4_discrete_input_25": {
+                "name": "Circulation Pump Running"
+            },
+            "altherma4_discrete_input_26": {
+                "name": "Imposed limit acceptance"
+            },
+            "altherma4_discrete_input_21": {
+                "name": "Additional zone running"
+            }
+        },
+        "number": {
+            "altherma3_holding_1": {
+                "name": "Leaving water Main Heating setpoint"
+            },
+            "altherma3_holding_2": {
+                "name": "Leaving water Main Cooling setpoint"
+            },
+            "altherma3_holding_6": {
+                "name": "Room thermostat control Heating setpoint"
+            },
+            "altherma3_holding_7": {
+                "name": "Room thermostat control Cooling setpoint"
+            },
+            "altherma3_holding_10": {
+                "name": "DHW reheat setpoint"
+            },
+            "altherma3_holding_54": {
+                "name": "Weather dependent mode Main LWT Heating setpoint offset"
+            },
+            "altherma3_holding_55": {
+                "name": "Weather dependent mode Main LWT Cooling setpoint offset"
+            },
+            "altherma3_holding_57": {
+                "name": "Power limit during Recommended on / buffering"
+            },
+            "altherma3_holding_58": {
+                "name": "General power limit"
+            },
+            "altherma3_holding_63": {
+                "name": "Leaving water Add Heating setpoint"
+            },
+            "altherma3_holding_64": {
+                "name": "Leaving water Add Cooling setpoint"
+            },
+            "altherma3_holding_66": {
+                "name": "Weather dependent mode Add LWT Heating setpoint offset"
+            },
+            "altherma3_holding_67": {
+                "name": "Weather dependent mode Add LWT Cooling setpoint offset"
+            },
+            "altherma4_holding_1": {
+                "name": "Leaving Water Main Heating Setpoint"
+            },
+            "altherma4_holding_2": {
+                "name": "Leaving Water Main Cooling Setpoint"
+            },
+            "altherma4_holding_10": {
+                "name": "DHW reheat Setpoint"
+            },
+            "altherma4_holding_14": {
+                "name": "DHW Boost setpoint (powerful)"
+            },
+            "altherma4_holding_16": {
+                "name": "DHW Single heat-up  setpoint (manual)"
+            },
+            "altherma4_holding_54": {
+                "name": "Weather Dependent Mode Main LWT Heating Setpoint Offset"
+            },
+            "altherma4_holding_55": {
+                "name": "Weather Dependent Mode Main LWT Cooling Setpoint Offset"
+            },
+            "altherma4_holding_58": {
+                "name": "General power limit"
+            },
+            "altherma4_holding_76": {
+                "name": "Room Thermostat Control Heating Setpoint Main"
+            },
+            "altherma4_holding_77": {
+                "name": "Room Thermostat Control Cooling Setpoint Main"
+            },
+            "altherma4_holding_63": {
+                "name": "Leaving Water Add Heating Setpoint"
+            },
+            "altherma4_holding_64": {
+                "name": "Leaving Water Add Cooling Setpoint"
+            },
+            "altherma4_holding_66": {
+                "name": "Weather Dependent Mode Add LWT Heating Setpoint Offset"
+            },
+            "altherma4_holding_67": {
+                "name": "Weather Dependent Mode Add LWT Cooling Setpoint Offset"
+            },
+            "altherma4_holding_78": {
+                "name": "Room Thermostat Control Heating Setpoint Add"
+            },
+            "altherma4_holding_79": {
+                "name": "Room Thermostat Control Cooling Setpoint Add"
+            },
+            "power_limit_for_demand_control": {
+                "name": "Power limit for Demand Control"
+            }
+        },
+        "select": {
+            "altherma3_holding_3": {
+                "name": "Operation mode"
+            },
+            "altherma3_holding_4": {
+                "name": "Space heating / cooling ON/OFF"
+            },
+            "altherma3_holding_9": {
+                "name": "Quiet mode operation"
+            },
+            "altherma3_holding_12": {
+                "name": "DHW reheat ON/OFF"
+            },
+            "altherma3_holding_13": {
+                "name": "DHW booster mode ON/OFF"
+            },
+            "altherma3_holding_53": {
+                "name": "Weather dependent mode Main"
+            },
+            "altherma3_holding_56": {
+                "name": "Smart grid"
+            },
+            "altherma3_holding_59": {
+                "name": "Thermostat Main Input A"
+            },
+            "altherma3_holding_61": {
+                "name": "Thermostat Add Input A"
+            },
+            "altherma3_holding_65": {
+                "name": "Weather dependent mode Add"
+            },
+            "altherma4_holding_3": {
+                "name": "Operation Mode"
+            },
+            "altherma4_holding_4": {
+                "name": "Space Heating/Cooling On/Off"
+            },
+            "altherma4_holding_9": {
+                "name": "Quiet Mode Operation"
+            },
+            "altherma4_holding_13": {
+                "name": "DHW Booster Mode On/Off (powerful)"
+            },
+            "altherma4_holding_15": {
+                "name": "DHW Single heat-up On/Off (manual)"
+            },
+            "altherma4_holding_56": {
+                "name": "Smart grid operation mode"
+            },
+            "altherma4_holding_68": {
+                "name": "Weather Dependent Mode heating Main"
+            },
+            "altherma4_holding_69": {
+                "name": "Weather Dependent Mode cooling Main"
+            },
+            "altherma4_holding_74": {
+                "name": "Thermostat request main"
+            },
+            "altherma4_holding_80": {
+                "name": "DHW Mode setting"
+            },
+            "altherma4_holding_75": {
+                "name": "Thermostat request add"
+            },
+            "a2a_smart_grid_operation_mode": {
+                "name": "Smart grid"
+            }
+        },
+        "switch": {
+            "altherma4_coil_1": {
+                "name": "Domestic Hot Water On/Off"
+            },
+            "altherma4_coil_2": {
+                "name": "Main zone On/Off"
+            },
+            "altherma4_coil_4": {
+                "name": "Enable room heating schedule Main"
+            },
+            "altherma4_coil_5": {
+                "name": "Enable room cooling schedule Main"
+            },
+            "altherma4_coil_3": {
+                "name": "Additional zone On/Off"
+            },
+            "altherma4_coil_6": {
+                "name": "Enable room heating schedule Add"
+            },
+            "altherma4_coil_7": {
+                "name": "Enable room cooling schedule Add"
+            }
+        },
+        "climate": {
+            "main_zone": {
+                "name": "Main zone"
+            }
+        },
+        "water_heater": {
+            "domestic_hot_water": {
+                "name": "Domestic hot water"
+            }
+        }
     },
-    "abort": {
-      "already_configured": "Device is already configured"
+    "selector": {
+        "climate_control": {
+            "options": {
+                "room_thermostat": "Room temperature (room thermostat)",
+                "leaving_water": "Leaving water temperature"
+            }
+        }
     }
-  }
 }

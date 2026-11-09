@@ -14,12 +14,21 @@ from .const import (
     CONF_ALTHERMA_VERSION,
     CONF_MODBUS_ADDRESS,
     DEFAULT_MODBUS_ADDRESS,
+    CONF_CLIMATE_CONTROL,
+    CLIMATE_CONTROL_ROOM,
+    CLIMATE_CONTROL_LEAVING_WATER,
+    DEFAULT_CLIMATE_CONTROL,
 )
 from homeassistant import config_entries
 from homeassistant.components.modbus import async_get_temporary_unit
 from homeassistant.const import CONF_NAME, CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.selector import (
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
 from modbus_connection import ModbusError, ModbusTcpParams
 import ipaddress
 import logging
@@ -29,6 +38,14 @@ import voluptuous as vol
 _LOGGER = logging.getLogger(__name__)
 
 ALTHERMA_VERSIONS = ["Altherma 3 (EKRHH)", "Air2Air (EKRHH)", "Altherma 4"]
+
+CLIMATE_CONTROL_SELECTOR = SelectSelector(
+    SelectSelectorConfig(
+        options=[CLIMATE_CONTROL_ROOM, CLIMATE_CONTROL_LEAVING_WATER],
+        translation_key=CONF_CLIMATE_CONTROL,
+        mode=SelectSelectorMode.DROPDOWN,
+    )
+)
 
 
 DATA_SCHEMA = vol.Schema(
@@ -43,6 +60,9 @@ DATA_SCHEMA = vol.Schema(
             ALTHERMA_VERSIONS
         ),
         vol.Required(CONF_ADDITIONAL_ZONE, default=DEFAULT_ADDITIONAL_ZONE): bool,
+        vol.Required(
+            CONF_CLIMATE_CONTROL, default=DEFAULT_CLIMATE_CONTROL
+        ): CLIMATE_CONTROL_SELECTOR,
         vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
         vol.Optional(CONF_MAX_POWER, default=DEFAULT_MAX_POWER): vol.All(
             int, vol.Range(min=2, max=20)
@@ -57,8 +77,8 @@ DATA_SCHEMA = vol.Schema(
 def host_valid(host):
     """Return True if hostname or IP address is valid."""
     try:
-        if ipaddress.ip_address(host).version == (4 or 6):
-            return True
+        ipaddress.ip_address(host)
+        return True
     except ValueError:
         disallowed = re.compile(r"[^a-zA-Z\d\-]")
         return all(x and not disallowed.search(x) for x in host.split("."))
@@ -88,6 +108,7 @@ OPTIONS_SCHEMA = vol.Schema(
         vol.Required(CONF_MODBUS_ADDRESS): vol.All(int, vol.Range(min=1, max=247)),
         vol.Required(CONF_ALTHERMA_VERSION): vol.In(ALTHERMA_VERSIONS),
         vol.Required(CONF_ADDITIONAL_ZONE): bool,
+        vol.Required(CONF_CLIMATE_CONTROL): CLIMATE_CONTROL_SELECTOR,
         vol.Required(CONF_MAX_POWER): vol.All(int, vol.Range(min=2, max=20)),
         vol.Required(CONF_MAX_WATER_TEMP): vol.All(int, vol.Range(min=50, max=80)),
         vol.Optional(CONF_SCAN_INTERVAL): int,
@@ -130,7 +151,7 @@ class DaikinHaEkrhhModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     # The schema version of the entries that it creates
     # Home Assistant will call your migrate method if the version changes
     VERSION = 1
-    MINOR_VERSION = 6
+    MINOR_VERSION = 8
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
 
     async def async_step_user(self, user_input=None):

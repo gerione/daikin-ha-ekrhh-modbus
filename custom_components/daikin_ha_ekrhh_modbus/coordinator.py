@@ -29,10 +29,19 @@ from .const import (
     ALTHERMA_4_INPUT_BINARY,
     ALTHERMA_4_INPUT_ADDITIONAL_ZONE,
     ALTHERMA_4_DISCRETE_INPUTS,
-    ALTHERMA_4_DISCRETE_INPUTS_ADDITIONAL_ZONE 
+    ALTHERMA_4_DISCRETE_INPUTS_ADDITIONAL_ZONE,
+    FAULT_CODE_SENSOR,
+    NO_SUB_CODE,
+    UNAVAILABLE_RAW_VALUES,
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+ERROR_KEYS = {
+    f"{DOMAIN}_{model}_input_{address}"
+    for model in ("altherma3", "altherma4")
+    for address in (21, 22, 23)
+}
 
 
 class DaikinEKRHHModbusHub(DataUpdateCoordinator):
@@ -66,43 +75,43 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
         self._unsub_interval_method = None
         self._sensors = []
         self.data = {}
+        self._unavailable_keys = set()
         self.altherma_version = altherma_version
 
     def checkAvailability(self, key):
-        if self._is_air2air:
-            return True
-        if key in (
-            f"{DOMAIN}_altherma3_input_21",
-            f"{DOMAIN}_altherma3_input_22",
-            f"{DOMAIN}_altherma3_input_23",
-            f"{DOMAIN}_altherma4_input_21",
-            f"{DOMAIN}_altherma4_input_22",
-            f"{DOMAIN}_altherma4_input_23",
-        ):
-            return True
-        if self.altherma_version == "Altherma 3 (EKRHH)":
-            if f"{DOMAIN}_altherma3_input_21" not in self.data or (
-                self.data[f"{DOMAIN}_altherma3_input_21"] != 0
-                and self.data[f"{DOMAIN}_altherma3_input_21"] != 2
-            ):
-                return False
-            if (
-                f"{DOMAIN}_altherma3_input_23" not in self.data
-                or self.data[f"{DOMAIN}_altherma3_input_23"] != 32766
-            ):
-                return False
-        else:
-            if f"{DOMAIN}_altherma4_input_21" not in self.data or (
-                self.data[f"{DOMAIN}_altherma4_input_21"] != 0
-                and self.data[f"{DOMAIN}_altherma4_input_21"] != 2
-            ):
-                return False
-            if (
-                f"{DOMAIN}_altherma4_input_23" not in self.data
-                or self.data[f"{DOMAIN}_altherma4_input_23"] != 32766
-            ):
-                return False
-        return True
+        """Return False for values the unit reported as not available."""
+        return key not in self._unavailable_keys
+
+    def _store(self, item, raw):
+        """Decode one register of a register table and store its value."""
+        key = item[2]
+        # The error registers carry their own meaning in every value.
+        if raw in UNAVAILABLE_RAW_VALUES and key not in ERROR_KEYS:
+            self._unavailable_keys.add(key)
+            return
+        self._unavailable_keys.discard(key)
+        if item[3] == "INT16":
+            self.data[key] = raw
+        elif item[3] == "TEMP16":
+            self.data[key] = self.calculate_temp(raw)
+        elif item[3] == "POW16":
+            self.data[key] = self.calculate_power(raw)
+        elif item[3] == "FLOW16":
+            self.data[key] = raw / 100.0
+        elif item[3] == "TEXT16":
+            self.data[key] = chr((raw >> 8) & 0xFF) + chr(raw & 0xFF)
+
+    def _fault_code(self, model):
+        """Combine error code and sub code the way the unit displays them."""
+        if self.data.get(f"{DOMAIN}_{model}_input_21") == 0:
+            return "No error"
+        code = self.data.get(f"{DOMAIN}_{model}_input_22", "").strip("\x00 ")
+        if not code:
+            return None
+        sub_code = self.data.get(f"{DOMAIN}_{model}_input_23")
+        if sub_code is None or sub_code == NO_SUB_CODE:
+            return code
+        return f"{code}-{sub_code:02d}"
 
     def calculate_value(self, value, sf):
         return value * 10**sf
@@ -128,6 +137,18 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
             _LOGGER.error("Could not write register %s: %s", address, err)
             return False
         return True
+
+    async def async_write_value(self, address, fmt, value) -> bool:
+        """Encode a value in a register table format and write it."""
+        if fmt in ("POW16", "TEMP16"):
+            payload = round(value * 100)
+        elif fmt == "INT16":
+            payload = int(value)
+        else:
+            _LOGGER.error("Invalid encoding format %s for register %s", fmt, address)
+            return False
+        # Two's complement for negative numbers.
+        return await self.async_write_register(address, payload & 0xFFFF)
 
     async def async_write_coil(self, address, value) -> bool:
         """Write one coil, returning whether the device accepted it."""
@@ -193,19 +214,7 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
 
         # Iterate over the sorted list
         for item in sorted_list:
-            offset = item[0] - 1
-            if item[3] == "INT16":
-                self.data[item[2]] = decoded_values[offset]
-            elif item[3] == "TEMP16":
-                self.data[item[2]] = self.calculate_temp(decoded_values[offset])
-            elif item[3] == "POW16":
-                self.data[item[2]] = self.calculate_power(decoded_values[offset])
-            elif item[3] == "FLOW16":
-                self.data[item[2]] = decoded_values[offset] / 100.0
-            elif item[3] == "TEXT16":
-                self.data[item[2]] = chr((decoded_values[offset] >> 8) & 0xFF) + chr(
-                    decoded_values[offset] & 0xFF
-                )
+            self._store(item, decoded_values[item[0] - 1])
 
         if self.altherma_version != "Altherma 3 (EKRHH)":
             ALL_INPUT = []
@@ -231,21 +240,11 @@ class DaikinEKRHHModbusHub(DataUpdateCoordinator):
 
         # Iterate over the sorted list
         for item in sorted_list:
-            offset = item[0] - 20 - 1
-            if item[3] == "INT16":
-                self.data[item[2]] = decoded_values[offset]
-            elif item[3] == "TEMP16":
-                self.data[item[2]] = self.calculate_temp(decoded_values[offset])
-            elif item[3] == "POW16":
-                self.data[item[2]] = self.calculate_power(decoded_values[offset])
-            elif item[3] == "FLOW16":
-                self.data[item[2]] = decoded_values[offset] / 100.0
-            elif item[3] == "TEXT16":
-                self.data[item[2]] = chr((decoded_values[offset] >> 8) & 0xFF) + chr(
-                    decoded_values[offset] & 0xFF
-                )
+            self._store(item, decoded_values[item[0] - 20 - 1])
         if self.altherma_version == "Altherma 3 (EKRHH)":
+            self.data[FAULT_CODE_SENSOR[1]] = self._fault_code("altherma3")
             return self.data
+        self.data[FAULT_CODE_SENSOR[1]] = self._fault_code("altherma4")
 
         ALL_COILS = []
         ALL_COILS.extend(ALTHERMA_4_COILS)

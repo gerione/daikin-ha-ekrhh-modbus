@@ -5,7 +5,8 @@ from modbus_connection import ModbusTcpParams
 from homeassistant.components.modbus import async_get_unit
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import config_validation as cv, entity_registry as er
 from .coordinator import DaikinEKRHHModbusHub
 
 from .const import (
@@ -17,22 +18,29 @@ from .const import (
     CONF_ADDITIONAL_ZONE,
     CONF_ISAIR2AIR,
     CONF_ALTHERMA_VERSION,
+    CONF_CLIMATE_CONTROL,
+    DEFAULT_CLIMATE_CONTROL,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 
-PLATFORMS = ["binary_sensor", "number", "select", "sensor", "switch"]
+PLATFORMS = [
+    "binary_sensor",
+    "climate",
+    "number",
+    "select",
+    "sensor",
+    "switch",
+    "water_heater",
+]
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+type DaikinEKRHHConfigEntry = ConfigEntry[DaikinEKRHHModbusHub]
 
 
-async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Set up the Daikin EKRHH Modbus component."""
-    # @TODO: Add setup code.
-    hass.data[DOMAIN] = {}
-    return True
-
-
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def async_setup_entry(hass: HomeAssistant, entry: DaikinEKRHHConfigEntry):
     """Set up a daikin_ekrhh mobus."""
     host = entry.data[CONF_HOST]
     name = entry.data[CONF_NAME]
@@ -62,20 +70,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         altherma_version,
     )
     await hub.async_config_entry_first_refresh()
-    hass.data[DOMAIN][name] = {"hub": hub}
+    entry.runtime_data = hub
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
 
 
-async def async_unload_entry(hass, entry):
+async def async_unload_entry(hass: HomeAssistant, entry: DaikinEKRHHConfigEntry):
     """Unload daikin_ekrhh mobus entry."""
-    if not await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        return False
-
-    hass.data[DOMAIN].pop(entry.data["name"])
-    return True
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
 # Example migration function
@@ -115,8 +119,29 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
         if config_entry.minor_version < 6:
             new_data.setdefault(CONF_MODBUS_ADDRESS, DEFAULT_MODBUS_ADDRESS)
 
+        if config_entry.minor_version < 7:
+            # The Air2Air power limit number had a stray space in its key.
+            @callback
+            def _fix_power_limit_id(entity_entry: er.RegistryEntry):
+                if entity_entry.domain == "number" and entity_entry.unique_id.endswith(
+                    "_ Power_limit_for_Demand_Control"
+                ):
+                    return {
+                        "new_unique_id": entity_entry.unique_id.replace(
+                            "_ Power_limit", "_Power_limit"
+                        )
+                    }
+                return None
+
+            await er.async_migrate_entries(
+                hass, config_entry.entry_id, _fix_power_limit_id
+            )
+
+        if config_entry.minor_version < 8:
+            new_data.setdefault(CONF_CLIMATE_CONTROL, DEFAULT_CLIMATE_CONTROL)
+
         hass.config_entries.async_update_entry(
-            config_entry, data=new_data, minor_version=6, version=1
+            config_entry, data=new_data, minor_version=8, version=1
         )
 
     _LOGGER.debug(

@@ -16,6 +16,10 @@ DEFAULT_MAX_POWER = 19
 DEFAULT_MAX_WATER_TEMP = 60
 CONF_ALTHERMA_VERSION = "altherma_version"
 DEFAULT_ALTHERMA_VERSION = 3
+CONF_CLIMATE_CONTROL = "climate_control"
+CLIMATE_CONTROL_ROOM = "room_thermostat"
+CLIMATE_CONTROL_LEAVING_WATER = "leaving_water"
+DEFAULT_CLIMATE_CONTROL = CLIMATE_CONTROL_ROOM
 
 DAIKIN_OP_MODE_OPTIONS = {0: "Auto",1: "Heating",2: "Cooling", }
 DAIKIN_SG_MODE_OPTIONS = {0: "Free",1: "Forced off",2: "Recommended on",3: "Forced on", }
@@ -105,6 +109,64 @@ ALTHERMA_3_INPUT_BINARY = [
     [53,"Space heating/cooling normal operation",f"{DOMAIN}_altherma3_input_53","INT16",None,None,],
 ]
 
+# Raw register values meaning "not available" (32765) or "not supported" (32767).
+UNAVAILABLE_RAW_VALUES = (32765, 32767)
+# Sub code value reported when the abnormality has no sub code.
+NO_SUB_CODE = 32766
+
+# Decoded from the unit error registers 21-23, e.g. "7H-19".
+FAULT_CODE_SENSOR = ["Fault code", f"{DOMAIN}_fault_code", None, "mdi:alert-circle"]
+
+# Entities combining several registers, as [name, key].
+CLIMATE_ENTITY = ["Main zone", f"{DOMAIN}_main_zone"]
+WATER_HEATER_ENTITY = ["Domestic hot water", f"{DOMAIN}_domestic_hot_water"]
+
+# Registers (1-based) behind the climate entity, per model and control type.
+# "limits" are the input registers holding the setpoint's lower/upper limit.
+CLIMATE_REGISTERS = {
+    "Altherma 3 (EKRHH)": {
+        "mode": 3,
+        "power": 4,
+        "room_thermostat": {
+            "current": 50,
+            "heat": 6,
+            "cool": 7,
+        },
+        "leaving_water": {
+            "current": 40,
+            "heat": 1,
+            "cool": 2,
+            "heat_limits": (54, 55),
+            "cool_limits": (56, 57),
+        },
+    },
+    "Altherma 4": {
+        "mode": 3,
+        "power": 4,
+        "room_thermostat": {
+            "current": 50,
+            "heat": 76,
+            "cool": 77,
+            "heat_limits": (84, 85),
+            "cool_limits": (86, 87),
+        },
+        "leaving_water": {
+            "current": 40,
+            "heat": 1,
+            "cool": 2,
+            "heat_limits": (54, 55),
+            "cool_limits": (56, 57),
+        },
+    },
+}
+
+# Registers (1-based) behind the water heater entity. On Altherma 4 domestic hot
+# water is switched by a coil, on Altherma 3 by a holding register.
+WATER_HEATER_REGISTERS = {
+    "Altherma 3 (EKRHH)": {"current": 43, "target": 10, "power": ("holding", 12), "boost": 13},
+    "Altherma 4": {"current": 43, "target": 10, "power": ("coil", 1), "boost": 13},
+}
+
 A2A_SENSOR_TYPES = {
     "H1001": ["Smart Grid operation mode","A2A_Smart_Grid_operation_mode",None,None,],
     "H1002": ["Power limit for Demand Control","Power_limit_for_Demand_Control","kW","mdi:lightning-bolt",],
@@ -114,7 +176,7 @@ DAIKIN_A2A_SELECT_TYPES = [
     ["Smart grid", "A2A_Smart_Grid_operation_mode", 1000, DAIKIN_SG_MODE_OPTIONS, ]
 ]
 DAIKIN_A2A_NUMBER_TYPES = [
-    ["Power limit for Demand Control"," Power_limit_for_Demand_Control",1001,"POW16",{"min": 0, "max": 20, "step": 0.1, "unit": "kW"},]
+    ["Power limit for Demand Control","Power_limit_for_Demand_Control",1001,"POW16",{"min": 0, "max": 20, "step": 0.1, "unit": "kW"},]
 ]
 
 # Discrete outputs ("coils"), read/write
@@ -171,50 +233,50 @@ ALTHERMA_4_INPUT = [
     [21,"Unit abnormality",f"{DOMAIN}_altherma4_input_21","INT16",None,None,],
     [22,"Unit abnormality Code",f"{DOMAIN}_altherma4_input_22","TEXT16",None,None,],
     [23,"Unit abnormality Sub Code",f"{DOMAIN}_altherma4_input_23","INT16",None,None,],
-    [40,"Leaving Water Temperature pre-PHE",f"{DOMAIN}_altherma4_input_40","TEMP16",None,None,],
-    [41,"Leaving Water Temperature pre-BUH",f"{DOMAIN}_altherma4_input_41","TEMP16",None,None,],
-    [42,"Return Water Temperature",f"{DOMAIN}_altherma4_input_42","TEMP16",None,None,],
-    [43,"Domestic Hot Water Temperature",f"{DOMAIN}_altherma4_input_43","TEMP16",None,None,],
-    [44,"Outside Air Temperature",f"{DOMAIN}_altherma4_input_44","TEMP16",None,None,],
-    [45,"Liquid Refrigerant Temperature",f"{DOMAIN}_altherma4_input_45","TEMP16",None,None,],
-    [49,"Flow Rate",f"{DOMAIN}_altherma4_input_49","INT16",None,None,],
-    [50,"Remote controller room temperature (main)",f"{DOMAIN}_altherma4_input_50","TEMP16",None,None,],
-    [51,"Heatpump power consumption",f"{DOMAIN}_altherma4_input_51","POW16",None,None,],
-    [54,"Leaving Water Main Heating Setpoint Lower limit",f"{DOMAIN}_altherma4_input_54","TEMP16",None,None,],
-    [55,"Leaving Water Main Heating Setpoint Upper limit",f"{DOMAIN}_altherma4_input_55","TEMP16",None,None,],
-    [56,"Leaving Water Main Cooling Setpoint Lower limit",f"{DOMAIN}_altherma4_input_56","TEMP16",None,None,],
-    [57,"Leaving Water Main Cooling Setpoint Upper limit",f"{DOMAIN}_altherma4_input_57","TEMP16",None,None,],
+    [40,"Leaving Water Temperature pre-PHE",f"{DOMAIN}_altherma4_input_40","TEMP16","°C","mdi:temperature-celsius",],
+    [41,"Leaving Water Temperature pre-BUH",f"{DOMAIN}_altherma4_input_41","TEMP16","°C","mdi:temperature-celsius",],
+    [42,"Return Water Temperature",f"{DOMAIN}_altherma4_input_42","TEMP16","°C","mdi:temperature-celsius",],
+    [43,"Domestic Hot Water Temperature",f"{DOMAIN}_altherma4_input_43","TEMP16","°C","mdi:temperature-celsius",],
+    [44,"Outside Air Temperature",f"{DOMAIN}_altherma4_input_44","TEMP16","°C","mdi:temperature-celsius",],
+    [45,"Liquid Refrigerant Temperature",f"{DOMAIN}_altherma4_input_45","TEMP16","°C","mdi:temperature-celsius",],
+    [49,"Flow Rate",f"{DOMAIN}_altherma4_input_49","INT16","L/min",None,],
+    [50,"Remote controller room temperature (main)",f"{DOMAIN}_altherma4_input_50","TEMP16","°C","mdi:temperature-celsius",],
+    [51,"Heatpump power consumption",f"{DOMAIN}_altherma4_input_51","POW16","kW","mdi:lightning-bolt",],
+    [54,"Leaving Water Main Heating Setpoint Lower limit",f"{DOMAIN}_altherma4_input_54","TEMP16","°C","mdi:temperature-celsius",],
+    [55,"Leaving Water Main Heating Setpoint Upper limit",f"{DOMAIN}_altherma4_input_55","TEMP16","°C","mdi:temperature-celsius",],
+    [56,"Leaving Water Main Cooling Setpoint Lower limit",f"{DOMAIN}_altherma4_input_56","TEMP16","°C","mdi:temperature-celsius",],
+    [57,"Leaving Water Main Cooling Setpoint Upper limit",f"{DOMAIN}_altherma4_input_57","TEMP16","°C","mdi:temperature-celsius",],
     [63,"Disinfaction state",f"{DOMAIN}_altherma4_input_63","INT16",None,None,],
     [65,"Demand response mode",f"{DOMAIN}_altherma4_input_65","INT16",None,None,],
-    [66,"Bypass Valve Position",f"{DOMAIN}_altherma4_input_66","INT16",None,None,],
-    [67,"Tank Valve Position",f"{DOMAIN}_altherma4_input_67","INT16",None,None,],
-    [68,"Circulation Pump Speed",f"{DOMAIN}_altherma4_input_68","INT16",None,None,],
-    [69,"Mixed Pump PWM in Mixing kit",f"{DOMAIN}_altherma4_input_69","INT16",None,None,],
-    [70,"Direct Pump PWM in Mixing kit",f"{DOMAIN}_altherma4_input_70","INT16",None,None,],
-    [71,"Mixing Valve Position in Mixing kit",f"{DOMAIN}_altherma4_input_71","INT16",None,None,],
-    [72,"Mixing Leaving Water Temperature in Mixing kit",f"{DOMAIN}_altherma4_input_72","TEMP16",None,None,],
-    [73,"Spaceheating/cooling target for main zone in Mixing kit",f"{DOMAIN}_altherma4_input_73","TEMP16",None,None,],
-    [74,"Leaving Water Temperature pre-PHE outdoor",f"{DOMAIN}_altherma4_input_74","TEMP16",None,None,],
-    [75,"Leaving Water Temperature Tank valve",f"{DOMAIN}_altherma4_input_75","TEMP16",None,None,],
-    [76,"Domestic Hot Water Upper Temperature",f"{DOMAIN}_altherma4_input_76","TEMP16",None,None,],
-    [77,"Domestic Hot Water Lower Temperature",f"{DOMAIN}_altherma4_input_77","TEMP16",None,None,],
-    [79,"Water pressure",f"{DOMAIN}_altherma4_input_79","INT16",None,None,],
-    [80,"Spaceheating/cooling target for main zone",f"{DOMAIN}_altherma4_input_80","TEMP16",None,None,],
+    [66,"Bypass Valve Position",f"{DOMAIN}_altherma4_input_66","INT16","%",None,],
+    [67,"Tank Valve Position",f"{DOMAIN}_altherma4_input_67","INT16","%",None,],
+    [68,"Circulation Pump Speed",f"{DOMAIN}_altherma4_input_68","INT16","%",None,],
+    [69,"Mixed Pump PWM in Mixing kit",f"{DOMAIN}_altherma4_input_69","INT16","%",None,],
+    [70,"Direct Pump PWM in Mixing kit",f"{DOMAIN}_altherma4_input_70","INT16","%",None,],
+    [71,"Mixing Valve Position in Mixing kit",f"{DOMAIN}_altherma4_input_71","INT16","%",None,],
+    [72,"Mixing Leaving Water Temperature in Mixing kit",f"{DOMAIN}_altherma4_input_72","TEMP16","°C","mdi:temperature-celsius",],
+    [73,"Spaceheating/cooling target for main zone in Mixing kit",f"{DOMAIN}_altherma4_input_73","TEMP16","°C","mdi:temperature-celsius",],
+    [74,"Leaving Water Temperature pre-PHE outdoor",f"{DOMAIN}_altherma4_input_74","TEMP16","°C","mdi:temperature-celsius",],
+    [75,"Leaving Water Temperature Tank valve",f"{DOMAIN}_altherma4_input_75","TEMP16","°C","mdi:temperature-celsius",],
+    [76,"Domestic Hot Water Upper Temperature",f"{DOMAIN}_altherma4_input_76","TEMP16","°C","mdi:temperature-celsius",],
+    [77,"Domestic Hot Water Lower Temperature",f"{DOMAIN}_altherma4_input_77","TEMP16","°C","mdi:temperature-celsius",],
+    [79,"Water pressure",f"{DOMAIN}_altherma4_input_79","INT16","bar",None,],
+    [80,"Spaceheating/cooling target for main zone",f"{DOMAIN}_altherma4_input_80","TEMP16","°C","mdi:temperature-celsius",],
     [82,"Abnormality counter (user)",f"{DOMAIN}_altherma4_input_82","INT16",None,None,],
     [83,"Unit operation mode",f"{DOMAIN}_altherma4_input_83","INT16",None,None,],
-    [84,"Room Heating Setpoint Lower limit",f"{DOMAIN}_altherma4_input_84","TEMP16",None,None,],
-    [85,"Room Heating Setpoint Upper limit",f"{DOMAIN}_altherma4_input_85","TEMP16",None,None,],
-    [86,"Room Cooling Setpoint Lower limit",f"{DOMAIN}_altherma4_input_86","TEMP16",None,None,],
-    [87,"Room Cooling Setpoint Upper limit",f"{DOMAIN}_altherma4_input_87","TEMP16",None,None,],
+    [84,"Room Heating Setpoint Lower limit",f"{DOMAIN}_altherma4_input_84","TEMP16","°C","mdi:temperature-celsius",],
+    [85,"Room Heating Setpoint Upper limit",f"{DOMAIN}_altherma4_input_85","TEMP16","°C","mdi:temperature-celsius",],
+    [86,"Room Cooling Setpoint Lower limit",f"{DOMAIN}_altherma4_input_86","TEMP16","°C","mdi:temperature-celsius",],
+    [87,"Room Cooling Setpoint Upper limit",f"{DOMAIN}_altherma4_input_87","TEMP16","°C","mdi:temperature-celsius",],
 ]
 
 ALTHERMA_4_INPUT_ADDITIONAL_ZONE = [
-    [58,"Leaving Water Add Heating Setpoint Lower limit",f"{DOMAIN}_altherma4_input_58","TEMP16",None,None,],
-    [59,"Leaving Water Add Heating Setpoint Upper limit",f"{DOMAIN}_altherma4_input_59","TEMP16",None,None,],
-    [60,"Leaving Water Add Cooling Setpoint Lower limit",f"{DOMAIN}_altherma4_input_60","TEMP16",None,None,],
-    [61,"Leaving Water Add Cooling Setpoint Upper limit",f"{DOMAIN}_altherma4_input_61","TEMP16",None,None,],
-    [78,"Remote controller room temperature (add)",f"{DOMAIN}_altherma4_input_78","TEMP16",None,None,],
-    [81,"Spaceheating/cooling target for add zone",f"{DOMAIN}_altherma4_input_81","TEMP16",None,None,],
+    [58,"Leaving Water Add Heating Setpoint Lower limit",f"{DOMAIN}_altherma4_input_58","TEMP16","°C","mdi:temperature-celsius",],
+    [59,"Leaving Water Add Heating Setpoint Upper limit",f"{DOMAIN}_altherma4_input_59","TEMP16","°C","mdi:temperature-celsius",],
+    [60,"Leaving Water Add Cooling Setpoint Lower limit",f"{DOMAIN}_altherma4_input_60","TEMP16","°C","mdi:temperature-celsius",],
+    [61,"Leaving Water Add Cooling Setpoint Upper limit",f"{DOMAIN}_altherma4_input_61","TEMP16","°C","mdi:temperature-celsius",],
+    [78,"Remote controller room temperature (add)",f"{DOMAIN}_altherma4_input_78","TEMP16","°C","mdi:temperature-celsius",],
+    [81,"Spaceheating/cooling target for add zone",f"{DOMAIN}_altherma4_input_81","TEMP16","°C","mdi:temperature-celsius",],
 ]
 
 ALTHERMA_4_INPUT_BINARY = [

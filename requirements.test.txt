@@ -1,3 +1,5 @@
-pytest
-pytest-cov==2.9.0
-pytest-homeassistant-custom-component
+pytest-homeassistant-custom-component>=0.13.375
+# Requirements of Home Assistant's modbus integration, which this one depends on.
+pymodbus>=3.13.1
+modbus-connection[tmodbus]>=4.12.4
+tmodbus>=0.6.2

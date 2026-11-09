@@ -1,19 +1,18 @@
 import logging
-from typing import Optional, Any
 from .const import (
     ALTHERMA_3_INPUT,
     ALTHERMA_3_INPUT_ADDITIONAL_ZONE,
     ALTHERMA_4_INPUT,
     ALTHERMA_4_INPUT_ADDITIONAL_ZONE,
-    DOMAIN,
-    ATTR_STATUS_DESCRIPTION,
-    ATTR_MANUFACTURER,
     A2A_SENSOR_TYPES,
+    FAULT_CODE_SENSOR,
 )
+from .entity import DaikinEKRHHEntity
 
 from homeassistant.const import (
     CONF_NAME,
     UnitOfPower,
+    UnitOfPressure,
     UnitOfTemperature,
     UnitOfVolumeFlowRate,
 )
@@ -23,153 +22,69 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 
-from homeassistant.core import callback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
-
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
     hub_name = entry.data[CONF_NAME]
-    hub = hass.data[DOMAIN][hub_name]["hub"]
-
-    device_info = {
-        "identifiers": {(DOMAIN, hub_name)},
-        "name": hub_name,
-        "manufacturer": ATTR_MANUFACTURER,
-    }
+    hub = entry.runtime_data
 
     entities = []
     if not hub._is_air2air:
         if hub.altherma_version == "Altherma 3 (EKRHH)":
-            for sensor_info in ALTHERMA_3_INPUT:
-                sensor = DaikinEKRHHSensor(
-                    hub_name,
-                    hub,
-                    device_info,
-                    sensor_info[1],
-                    sensor_info[2],
-                    sensor_info[4],
-                    sensor_info[5],
-                )
-                entities.append(sensor)
+            sensor_infos = list(ALTHERMA_3_INPUT)
             if hub._additional_zone:
-                for sensor_info in ALTHERMA_3_INPUT_ADDITIONAL_ZONE:
-                    sensor = DaikinEKRHHSensor(
-                        hub_name,
-                        hub,
-                        device_info,
-                        sensor_info[1],
-                        sensor_info[2],
-                        sensor_info[4],
-                        sensor_info[5],
-                    )
-                    entities.append(sensor)
+                sensor_infos.extend(ALTHERMA_3_INPUT_ADDITIONAL_ZONE)
         else:
-            for sensor_info in ALTHERMA_4_INPUT:
-                sensor = DaikinEKRHHSensor(
-                    hub_name,
-                    hub,
-                    device_info,
-                    sensor_info[1],
-                    sensor_info[2],
-                    sensor_info[4],
-                    sensor_info[5],
-                )
-                entities.append(sensor)
+            sensor_infos = list(ALTHERMA_4_INPUT)
             if hub._additional_zone:
-                for sensor_info in ALTHERMA_4_INPUT_ADDITIONAL_ZONE:
-                    sensor = DaikinEKRHHSensor(
-                        hub_name,
-                        hub,
-                        device_info,
-                        sensor_info[1],
-                        sensor_info[2],
-                        sensor_info[4],
-                        sensor_info[5],
-                    )
-                    entities.append(sensor)
-    else:
-        for sensor_info in A2A_SENSOR_TYPES.values():
-            sensor = DaikinEKRHHSensor(
+                sensor_infos.extend(ALTHERMA_4_INPUT_ADDITIONAL_ZONE)
+        for sensor_info in sensor_infos:
+            entities.append(
+                DaikinEKRHHSensor(
+                    hub_name, hub, sensor_info[2], sensor_info[4], sensor_info[5]
+                )
+            )
+        entities.append(
+            DaikinEKRHHSensor(
                 hub_name,
                 hub,
-                device_info,
-                sensor_info[0],
-                sensor_info[1],
-                sensor_info[2],
-                sensor_info[3],
+                FAULT_CODE_SENSOR[1],
+                FAULT_CODE_SENSOR[2],
+                FAULT_CODE_SENSOR[3],
             )
-            entities.append(sensor)
+        )
+    else:
+        for sensor_info in A2A_SENSOR_TYPES.values():
+            entities.append(
+                DaikinEKRHHSensor(
+                    hub_name, hub, sensor_info[1], sensor_info[2], sensor_info[3]
+                )
+            )
     async_add_entities(entities)
     return True
 
 
-class DaikinEKRHHSensor(CoordinatorEntity, SensorEntity):
+class DaikinEKRHHSensor(DaikinEKRHHEntity, SensorEntity):
     """Representation of an Daikin EKRHH Modbus sensor."""
 
-    def __init__(self, platform_name, hub, device_info, name, key, unit, icon):
+    def __init__(self, device_name, hub, key, unit, icon):
         """Initialize the sensor."""
-        super().__init__(coordinator=hub)
-        self._platform_name = platform_name
-        self._hub = hub
-        self._key = key
-        self._name = name
-        self._unit_of_measurement = unit
-        self._icon = icon
-        self._device_info = device_info
-        self._attr_state_class = SensorStateClass.MEASUREMENT
-        if (
-            self._unit_of_measurement == UnitOfPower.WATT
-            or self._unit_of_measurement == UnitOfPower.KILO_WATT
-        ):
+        super().__init__(device_name, hub, key, icon)
+        self._attr_native_unit_of_measurement = unit
+        # Unitless values are status codes or text, not measurements.
+        if unit is not None:
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+        if unit == UnitOfPower.WATT or unit == UnitOfPower.KILO_WATT:
             self._attr_device_class = SensorDeviceClass.POWER
-        elif self._unit_of_measurement == UnitOfTemperature.CELSIUS:
+        elif unit == UnitOfTemperature.CELSIUS:
             self._attr_device_class = SensorDeviceClass.TEMPERATURE
-        elif self._unit_of_measurement == UnitOfVolumeFlowRate.LITERS_PER_MINUTE:
+        elif unit == UnitOfVolumeFlowRate.LITERS_PER_MINUTE:
             self._attr_device_class = SensorDeviceClass.VOLUME_FLOW_RATE
-
-    @callback
-    def _handle_coordinator_update(self):
-        if self._key in self._hub.data:
-            self._state = self._hub.data[self._key]
-        self.async_write_ha_state()
+        elif unit == UnitOfPressure.BAR:
+            self._attr_device_class = SensorDeviceClass.PRESSURE
 
     @property
-    def name(self):
-        """Return the name."""
-        return f"{self._platform_name} {self._name}"
-
-    @property
-    def unique_id(self) -> Optional[str]:
-        return f"{self._platform_name}_{self._key}"
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return self._unit_of_measurement
-
-    @property
-    def icon(self):
-        """Return the sensor icon."""
-        return self._icon
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        if self._key in self._hub.data:
-            return self._hub.data[self._key]
-        return None
-
-    @property
-    def should_poll(self) -> bool:
-        """Data is delivered by the hub"""
-        return False
-
-    @property
-    def device_info(self) -> Optional[dict[str, Any]]:
-        return self._device_info
-
-    @property
-    def available(self) -> bool:
-        return self._hub.checkAvailability(self._key)
+    def native_value(self):
+        """Return the value of the sensor."""
+        return self._hub.data.get(self._key)

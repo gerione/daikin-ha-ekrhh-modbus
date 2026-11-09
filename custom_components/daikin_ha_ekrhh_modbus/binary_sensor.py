@@ -1,149 +1,58 @@
 import logging
 
-from typing import Optional, Any
 from .const import (
-    DOMAIN,
     ALTHERMA_3_INPUT_BINARY,
     ALTHERMA_4_DISCRETE_INPUTS,
     ALTHERMA_4_DISCRETE_INPUTS_ADDITIONAL_ZONE,
     ALTHERMA_4_INPUT_BINARY,
-    DOMAIN,
-    ATTR_MANUFACTURER,
 )
+from .entity import DaikinEKRHHEntity
 
 from homeassistant.const import (
     CONF_NAME,
 )
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorDeviceClass,
 )
 
-from homeassistant.core import callback
-
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
     hub_name = entry.data[CONF_NAME]
-    hub = hass.data[DOMAIN][hub_name]["hub"]
+    hub = entry.runtime_data
 
-    device_info = {
-        "identifiers": {(DOMAIN, hub_name)},
-        "name": hub_name,
-        "manufacturer": ATTR_MANUFACTURER,
-    }
-
-    entities = []
+    sensor_infos = []
     if not hub._is_air2air:
         if hub.altherma_version == "Altherma 3 (EKRHH)":
-            for sensor_info in ALTHERMA_3_INPUT_BINARY:
-                sensor = DaikinEKRHHBinarySensor(
-                    hub_name,
-                    hub,
-                    device_info,
-                    sensor_info[1],
-                    sensor_info[2],
-                    sensor_info[4],
-                    sensor_info[5],
-                )
-                entities.append(sensor)
+            sensor_infos.extend(ALTHERMA_3_INPUT_BINARY)
         else:
-            for sensor_info in ALTHERMA_4_INPUT_BINARY:
-                sensor = DaikinEKRHHBinarySensor(
-                    hub_name,
-                    hub,
-                    device_info,
-                    sensor_info[1],
-                    sensor_info[2],
-                    sensor_info[4],
-                    sensor_info[5],
-                )
-                entities.append(sensor)
-            for sensor_info in ALTHERMA_4_DISCRETE_INPUTS:
-                sensor = DaikinEKRHHBinarySensor(
-                    hub_name,
-                    hub,
-                    device_info,
-                    sensor_info[1],
-                    sensor_info[2],
-                    sensor_info[4],
-                    sensor_info[5],
-                )
-                entities.append(sensor)
+            sensor_infos.extend(ALTHERMA_4_INPUT_BINARY)
+            sensor_infos.extend(ALTHERMA_4_DISCRETE_INPUTS)
             if hub._additional_zone:
-                for sensor_info in ALTHERMA_4_DISCRETE_INPUTS_ADDITIONAL_ZONE:
-                    if "Additional zone" in sensor_info[1]:
-                        sensor = DaikinEKRHHBinarySensor(
-                            hub_name,
-                            hub,
-                            device_info,
-                            sensor_info[1],
-                            sensor_info[2],
-                            sensor_info[4],
-                            sensor_info[5],
-                        )
-                        entities.append(sensor)
-    async_add_entities(entities)
+                sensor_infos.extend(
+                    sensor_info
+                    for sensor_info in ALTHERMA_4_DISCRETE_INPUTS_ADDITIONAL_ZONE
+                    if "Additional zone" in sensor_info[1]
+                )
+    async_add_entities(
+        DaikinEKRHHBinarySensor(hub_name, hub, sensor_info[2], sensor_info[5])
+        for sensor_info in sensor_infos
+    )
     return True
 
 
-class DaikinEKRHHBinarySensor(CoordinatorEntity, BinarySensorEntity):
+class DaikinEKRHHBinarySensor(DaikinEKRHHEntity, BinarySensorEntity):
     """Representation of an Daikin EKRHH Modbus sensor."""
 
-    def __init__(self, platform_name, hub, device_info, name, key, unit, icon):
-        """Initialize the sensor."""
-        super().__init__(coordinator=hub)
-        self._platform_name = platform_name
-        self._hub = hub
-        self._key = key
-        self._name = name
-        self._unit_of_measurement = unit
-        self._icon = icon
-        self._device_info = device_info
-
-    @callback
-    def _handle_coordinator_update(self):
-        self.async_write_ha_state()
-
-    @callback
-    def _update_state(self):
-        if self._key in self._hub.data:
-            self._state = self._hub.data[self._key]
-
-    @property
-    def name(self):
-        """Return the name."""
-        return f"{self._platform_name} {self._name}"
-
-    @property
-    def unique_id(self) -> Optional[str]:
-        return f"{self._platform_name}_{self._key}"
-
-    @property
-    def icon(self):
-        """Return the sensor icon."""
-        return self._icon
-
-    @property
-    def device_class(self):
-        return BinarySensorDeviceClass.RUNNING
+    _attr_device_class = BinarySensorDeviceClass.RUNNING
 
     @property
     def is_on(self):
-        return self._hub.data[self._key] == 1
-
-    @property
-    def should_poll(self) -> bool:
-        """Data is delivered by the hub"""
-        return False
-
-    @property
-    def device_info(self) -> Optional[dict[str, Any]]:
-        return self._device_info
-
-    @property
-    def available(self) -> bool:
-        return self._hub.checkAvailability(self._key)
+        """Return whether the value is set."""
+        value = self._hub.data.get(self._key)
+        if value is None:
+            return None
+        return value == 1
