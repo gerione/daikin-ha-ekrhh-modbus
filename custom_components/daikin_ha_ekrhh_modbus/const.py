@@ -117,6 +117,21 @@ NO_SUB_CODE = 32766
 # Decoded from the unit error registers 21-23, e.g. "7H-19".
 FAULT_CODE_SENSOR = ["Fault code", f"{DOMAIN}_fault_code", None, "mdi:alert-circle"]
 
+# Sensors calculated from polled values, as [name, key, unit, icon]. The input
+# registers they use are the same on both models (see sensor.py).
+CALCULATED_SENSORS = [
+    ["DeltaT", f"{DOMAIN}_delta_t", "°C", "mdi:thermometer-lines"],
+    ["Heat generated", f"{DOMAIN}_heat_generated", "kW", "mdi:fire"],
+    ["COP", f"{DOMAIN}_cop", None, "mdi:heat-pump"],
+]
+# Input registers (1-based) behind the calculated sensors.
+CALC_LEAVING_WATER = 40
+CALC_RETURN_WATER = 42
+CALC_FLOW = 49
+CALC_POWER = 51
+# Specific heat capacity of water in kJ/(kg·K); 1 L of water taken as 1 kg.
+WATER_HEAT_CAPACITY = 4.18
+
 # Entities combining several registers, as [name, key].
 CLIMATE_ENTITY = ["Main zone", f"{DOMAIN}_main_zone"]
 WATER_HEATER_ENTITY = ["Domestic hot water", f"{DOMAIN}_domestic_hot_water"]
@@ -159,6 +174,12 @@ CLIMATE_REGISTERS = {
         },
     },
 }
+
+# Climate entities setting the weather dependent leaving water setpoint offset,
+# as [name, key, heating register, cooling register]. Same registers on both
+# models; the additional zone one only exists with the additional zone enabled.
+OFFSET_CLIMATE_MAIN = ["Main zone LWT offset", f"{DOMAIN}_main_zone_lwt_offset", 54, 55]
+OFFSET_CLIMATE_ADDITIONAL = ["Additional zone LWT offset", f"{DOMAIN}_additional_zone_lwt_offset", 66, 67]
 
 # Registers (1-based) behind the water heater entity. On Altherma 4 domestic hot
 # water is switched by a coil, on Altherma 3 by a holding register.

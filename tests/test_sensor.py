@@ -149,3 +149,48 @@ async def test_air2air_sensors(hass: HomeAssistant, unit) -> None:
     limit = entity_id(hass, "sensor", "Power_limit_for_Demand_Control", prefixed=False)
     assert hass.states.get(mode).state == "2"
     assert hass.states.get(limit).state == "2.5"
+
+
+async def test_calculated_sensors(hass: HomeAssistant, unit) -> None:
+    """DeltaT, heat generated and COP follow from temperatures, flow and power."""
+    unit.set_input(40, 3500)
+    unit.set_input(42, 3000)
+    unit.set_input(49, 18)
+    unit.set_input(51, 150)
+    await setup_entry(hass, make_entry(ALTHERMA_4))
+
+    delta_t = hass.states.get(entity_id(hass, "sensor", "delta_t"))
+    assert delta_t.state == "5.0"
+    assert delta_t.attributes[ATTR_UNIT_OF_MEASUREMENT] == "°C"
+    assert ATTR_DEVICE_CLASS not in delta_t.attributes
+
+    heat = hass.states.get(entity_id(hass, "sensor", "heat_generated"))
+    assert float(heat.state) == 6.27  # 18 L/min / 60 * 4.18 * 5 K
+    assert heat.attributes[ATTR_UNIT_OF_MEASUREMENT] == "kW"
+    assert heat.attributes[ATTR_DEVICE_CLASS] == "power"
+
+    cop = hass.states.get(entity_id(hass, "sensor", "cop"))
+    assert float(cop.state) == 4.18
+    assert cop.attributes[ATTR_STATE_CLASS] == SensorStateClass.MEASUREMENT
+
+
+async def test_calculated_sensors_altherma3(hass: HomeAssistant, unit) -> None:
+    """Altherma 3 uses the scaled flow rate."""
+    unit.set_input(40, 3500)
+    unit.set_input(42, 3000)
+    unit.set_input(49, 1850)
+    await setup_entry(hass, make_entry(ALTHERMA_3))
+    heat = hass.states.get(entity_id(hass, "sensor", "heat_generated"))
+    assert float(heat.state) == 6.444  # 18.5 L/min / 60 * 4.18 * 5 K
+    # No power consumption: the unit is idle and COP is undefined.
+    assert hass.states.get(entity_id(hass, "sensor", "cop")).state == "unknown"
+
+
+async def test_calculated_sensor_unavailable_source(hass: HomeAssistant, unit) -> None:
+    """A source value the unit reports as not available makes the result unavailable."""
+    unit.set_input(40, 3500)
+    unit.set_input(42, 32765)
+    await setup_entry(hass, make_entry(ALTHERMA_4))
+    for key in ("delta_t", "heat_generated", "cop"):
+        state = hass.states.get(entity_id(hass, "sensor", key))
+        assert state.state == STATE_UNAVAILABLE, key
