@@ -125,7 +125,7 @@ CALCULATED_SENSORS = [
     ["COP", f"{DOMAIN}_cop", None, "mdi:heat-pump"],
 ]
 # Input registers (1-based) behind the calculated sensors.
-CALC_LEAVING_WATER = 40
+CALC_LEAVING_WATER = 41  # after the backup heater (BUH)
 CALC_RETURN_WATER = 42
 CALC_FLOW = 49
 CALC_POWER = 51
@@ -148,7 +148,7 @@ CLIMATE_REGISTERS = {
             "cool": 7,
         },
         "leaving_water": {
-            "current": 40,
+            "current": 41,
             "heat": 1,
             "cool": 2,
             "heat_limits": (54, 55),
@@ -166,7 +166,7 @@ CLIMATE_REGISTERS = {
             "cool_limits": (86, 87),
         },
         "leaving_water": {
-            "current": 40,
+            "current": 41,
             "heat": 1,
             "cool": 2,
             "heat_limits": (54, 55),

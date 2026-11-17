@@ -126,7 +126,7 @@ async def test_leaving_water_control(hass: HomeAssistant, unit) -> None:
     unit.set_holding(3, 1)
     unit.set_holding(4, 1)
     unit.set_holding(1, 35)
-    unit.set_input(40, 3400)
+    unit.set_input(41, 3400)
     unit.set_input(54, 2500)
     unit.set_input(55, 5500)
     await setup_entry(hass, make_entry(ALTHERMA_3, climate_control="leaving_water"))

@@ -153,7 +153,7 @@ async def test_air2air_sensors(hass: HomeAssistant, unit) -> None:
 
 async def test_calculated_sensors(hass: HomeAssistant, unit) -> None:
     """DeltaT, heat generated and COP follow from temperatures, flow and power."""
-    unit.set_input(40, 3500)
+    unit.set_input(41, 3500)
     unit.set_input(42, 3000)
     unit.set_input(49, 18)
     unit.set_input(51, 150)
@@ -176,7 +176,7 @@ async def test_calculated_sensors(hass: HomeAssistant, unit) -> None:
 
 async def test_calculated_sensors_altherma3(hass: HomeAssistant, unit) -> None:
     """Altherma 3 uses the scaled flow rate."""
-    unit.set_input(40, 3500)
+    unit.set_input(41, 3500)
     unit.set_input(42, 3000)
     unit.set_input(49, 1850)
     await setup_entry(hass, make_entry(ALTHERMA_3))
@@ -188,7 +188,7 @@ async def test_calculated_sensors_altherma3(hass: HomeAssistant, unit) -> None:
 
 async def test_calculated_sensor_unavailable_source(hass: HomeAssistant, unit) -> None:
     """A source value the unit reports as not available makes the result unavailable."""
-    unit.set_input(40, 3500)
+    unit.set_input(41, 3500)
     unit.set_input(42, 32765)
     await setup_entry(hass, make_entry(ALTHERMA_4))
     for key in ("delta_t", "heat_generated", "cop"):
