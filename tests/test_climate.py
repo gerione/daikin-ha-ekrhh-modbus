@@ -126,7 +126,7 @@ async def test_leaving_water_control(hass: HomeAssistant, unit) -> None:
     unit.set_holding(3, 1)
     unit.set_holding(4, 1)
     unit.set_holding(1, 35)
-    unit.set_input(40, 3400)
+    unit.set_input(41, 3400)
     unit.set_input(54, 2500)
     unit.set_input(55, 5500)
     await setup_entry(hass, make_entry(ALTHERMA_3, climate_control="leaving_water"))
@@ -182,3 +182,88 @@ async def test_no_climate_for_air2air(hass: HomeAssistant, unit) -> None:
     """Air2Air units have no climate entity."""
     await setup_entry(hass, make_entry(AIR2AIR))
     assert hass.states.async_entity_ids(CLIMATE_DOMAIN) == []
+
+
+@pytest.mark.parametrize("version", [ALTHERMA_3, ALTHERMA_4])
+async def test_main_offset(hass: HomeAssistant, unit, version) -> None:
+    """The main zone offset thermostat writes holding 54/55 on both models."""
+    unit.set_holding(3, 1)
+    unit.set_holding(4, 1)
+    unit.set_holding(54, -2)
+    unit.set_holding(55, 3)
+    await setup_entry(hass, make_entry(version, climate_control="leaving_water"))
+    climate = entity_id(hass, "climate", "main_zone_lwt_offset")
+
+    state = hass.states.get(climate)
+    assert state.state == HVACMode.HEAT
+    assert state.attributes["hvac_modes"] == [HVACMode.HEAT]
+    assert state.attributes[ATTR_TEMPERATURE] == -2
+    assert state.attributes[ATTR_MIN_TEMP] == -10
+    assert state.attributes[ATTR_MAX_TEMP] == 10
+    assert state.attributes[ATTR_TARGET_TEMP_STEP] == 1
+    assert state.attributes[ATTR_CURRENT_TEMPERATURE] is None
+
+    await _call(hass, SERVICE_SET_TEMPERATURE, climate, temperature=-4)
+    assert unit.writes == [("register", 53, -4 & 0xFFFF)]
+    assert hass.states.get(climate).attributes[ATTR_TEMPERATURE] == -4
+
+
+async def test_offset_follows_cooling(hass: HomeAssistant, unit) -> None:
+    """While the unit cools, the offset thermostat uses the cooling register."""
+    unit.set_holding(3, 2)  # Cooling
+    unit.set_holding(4, 1)
+    unit.set_holding(55, 3)
+    await setup_entry(hass, make_entry(ALTHERMA_4))
+    climate = entity_id(hass, "climate", "main_zone_lwt_offset")
+    assert hass.states.get(climate).attributes[ATTR_TEMPERATURE] == 3
+    await _call(hass, SERVICE_SET_TEMPERATURE, climate, temperature=1)
+    assert unit.writes == [("register", 54, 1)]
+
+
+async def test_offset_does_not_switch_modes(hass: HomeAssistant, unit) -> None:
+    """The offset thermostat leaves mode and power to the main zone entity."""
+    unit.set_holding(3, 1)
+    unit.set_holding(4, 1)
+    await setup_entry(hass, make_entry(ALTHERMA_4))
+    climate = entity_id(hass, "climate", "main_zone_lwt_offset")
+    with pytest.raises(HomeAssistantError):
+        await _call(hass, SERVICE_SET_HVAC_MODE, climate, hvac_mode=HVACMode.OFF)
+    with pytest.raises(HomeAssistantError):
+        await _call(hass, SERVICE_TURN_OFF, climate)
+    assert unit.writes == []
+
+
+async def test_offset_auto_uses_a_range(hass: HomeAssistant, unit) -> None:
+    """In Daikin Auto both offsets are set as a range."""
+    unit.set_holding(3, 0)
+    unit.set_holding(4, 1)
+    await setup_entry(hass, make_entry(ALTHERMA_4))
+    climate = entity_id(hass, "climate", "main_zone_lwt_offset")
+    await _call(
+        hass, SERVICE_SET_TEMPERATURE, climate, target_temp_low=-1, target_temp_high=2
+    )
+    assert unit.writes == [("register", 53, -1 & 0xFFFF), ("register", 54, 2)]
+
+
+@pytest.mark.parametrize("version", [ALTHERMA_3, ALTHERMA_4])
+async def test_additional_zone_offset(hass: HomeAssistant, unit, version) -> None:
+    """With the additional zone enabled its offset thermostat writes 66/67."""
+    unit.set_holding(3, 1)
+    unit.set_holding(4, 1)
+    unit.set_holding(66, 1)
+    await setup_entry(hass, make_entry(version, additional_zone=True))
+    climate = entity_id(hass, "climate", "additional_zone_lwt_offset")
+    assert hass.states.get(climate).attributes[ATTR_TEMPERATURE] == 1
+    await _call(hass, SERVICE_SET_TEMPERATURE, climate, temperature=5)
+    assert unit.writes == [("register", 65, 5)]
+
+
+async def test_no_additional_zone_offset_by_default(hass: HomeAssistant, unit) -> None:
+    """Without the additional zone only the main zone entities exist."""
+    await setup_entry(hass, make_entry(ALTHERMA_3, climate_control="leaving_water"))
+    assert sorted(hass.states.async_entity_ids(CLIMATE_DOMAIN)) == sorted(
+        [
+            entity_id(hass, "climate", "main_zone"),
+            entity_id(hass, "climate", "main_zone_lwt_offset"),
+        ]
+    )
