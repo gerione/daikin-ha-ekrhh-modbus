@@ -258,6 +258,15 @@
             },
             "fault_code": {
                 "name": "Fault code"
+            },
+            "delta_t": {
+                "name": "DeltaT"
+            },
+            "heat_generated": {
+                "name": "Heat generated"
+            },
+            "cop": {
+                "name": "COP"
             }
         },
         "binary_sensor": {
@@ -586,6 +595,12 @@
         "climate": {
             "main_zone": {
                 "name": "Main zone"
+            },
+            "main_zone_lwt_offset": {
+                "name": "Main zone LWT offset"
+            },
+            "additional_zone_lwt_offset": {
+                "name": "Additional zone LWT offset"
             }
         },
         "water_heater": {

@@ -1,4 +1,4 @@
-"""Climate entity controlling the main heating zone."""
+"""Climate entities controlling the main zone and the leaving water offsets."""
 
 from homeassistant.components.climate import (
     ATTR_HVAC_MODE,
@@ -14,8 +14,12 @@ from homeassistant.exceptions import HomeAssistantError
 from .const import (
     CLIMATE_ENTITY,
     CLIMATE_REGISTERS,
+    CONF_ADDITIONAL_ZONE,
     CONF_CLIMATE_CONTROL,
+    DEFAULT_ADDITIONAL_ZONE,
     DEFAULT_CLIMATE_CONTROL,
+    OFFSET_CLIMATE_ADDITIONAL,
+    OFFSET_CLIMATE_MAIN,
 )
 from .entity import DaikinEKRHHEntity, holding_info, register_key
 
@@ -29,15 +33,24 @@ async def async_setup_entry(hass, entry, async_add_entities):
     hub = entry.runtime_data
     if hub._is_air2air:
         return True
+    name = entry.data[CONF_NAME]
+    # Only the climate entity of the configured control type is created, so the
+    # room thermostat one is absent when the zone runs on leaving water.
     control = entry.data.get(CONF_CLIMATE_CONTROL, DEFAULT_CLIMATE_CONTROL)
-    async_add_entities([DaikinEKRHHClimate(entry.data[CONF_NAME], hub, control)])
+    entities = [
+        DaikinEKRHHClimate(name, hub, control),
+        DaikinEKRHHOffsetClimate(name, hub, OFFSET_CLIMATE_MAIN),
+    ]
+    if entry.data.get(CONF_ADDITIONAL_ZONE, DEFAULT_ADDITIONAL_ZONE):
+        entities.append(DaikinEKRHHOffsetClimate(name, hub, OFFSET_CLIMATE_ADDITIONAL))
+    async_add_entities(entities)
     return True
 
 
 class _Setpoint:
     """A writable setpoint and the input registers holding its limits."""
 
-    def __init__(self, version, register, limits):
+    def __init__(self, version, register, limits=None):
         self.key = register_key(version, "holding", register)
         self.address = register - 1
         row = holding_info(self.key)
@@ -49,37 +62,25 @@ class _Setpoint:
         )
 
 
-class DaikinEKRHHClimate(DaikinEKRHHEntity, ClimateEntity):
-    """Main zone, controlled by either room or leaving water temperature."""
+class _ZoneClimate(DaikinEKRHHEntity, ClimateEntity):
+    """A pair of heating and cooling setpoints following the unit's mode."""
 
-    _attr_hvac_modes = [
-        HVACMode.OFF,
-        HVACMode.HEAT,
-        HVACMode.COOL,
-        HVACMode.HEAT_COOL,
-    ]
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
 
-    def __init__(self, device_name, hub, control) -> None:
-        """Initialize the climate entity."""
-        super().__init__(device_name, hub, CLIMATE_ENTITY[1])
+    def __init__(self, device_name, hub, key, heat, cool, current=None) -> None:
+        """Initialize from the heating and cooling setpoints."""
+        super().__init__(device_name, hub, key)
         version = hub.altherma_version
         registers = CLIMATE_REGISTERS[version]
-        setpoints = registers[control]
         self._mode_key = register_key(version, "holding", registers["mode"])
         self._mode_address = registers["mode"] - 1
         self._power_key = register_key(version, "holding", registers["power"])
         self._power_address = registers["power"] - 1
-        self._current_key = register_key(version, "input", setpoints["current"])
-        self._setpoints = {
-            HVACMode.HEAT: _Setpoint(
-                version, setpoints["heat"], setpoints.get("heat_limits")
-            ),
-            HVACMode.COOL: _Setpoint(
-                version, setpoints["cool"], setpoints.get("cool_limits")
-            ),
-        }
-        self._attr_target_temperature_step = self._setpoints[HVACMode.HEAT].step
+        self._current_key = (
+            register_key(version, "input", current) if current is not None else None
+        )
+        self._setpoints = {HVACMode.HEAT: heat, HVACMode.COOL: cool}
+        self._attr_target_temperature_step = heat.step
 
     def _value(self, key):
         return self._hub.data.get(key)
@@ -99,14 +100,15 @@ class DaikinEKRHHClimate(DaikinEKRHHEntity, ClimateEntity):
         return self._operation
 
     @property
-    def supported_features(self) -> ClimateEntityFeature:
-        features = ClimateEntityFeature.TURN_ON | ClimateEntityFeature.TURN_OFF
+    def _temperature_feature(self) -> ClimateEntityFeature:
         if self._operation == HVACMode.HEAT_COOL:
-            return features | ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
-        return features | ClimateEntityFeature.TARGET_TEMPERATURE
+            return ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
+        return ClimateEntityFeature.TARGET_TEMPERATURE
 
     @property
     def current_temperature(self) -> float | None:
+        if self._current_key is None:
+            return None
         return self._value(self._current_key)
 
     @property
@@ -161,14 +163,60 @@ class DaikinEKRHHClimate(DaikinEKRHHEntity, ClimateEntity):
         setpoint = self._setpoints[mode]
         await self._async_write(setpoint.key, setpoint.address, setpoint.format, value)
 
+    async def _async_done(self) -> None:
+        self.async_write_ha_state()
+        await self.coordinator.async_request_refresh()
+
+    async def async_set_temperature(self, **kwargs) -> None:
+        """Set the setpoint of the current mode, or both in Auto."""
+        if (hvac_mode := kwargs.get(ATTR_HVAC_MODE)) is not None:
+            await self.async_set_hvac_mode(hvac_mode)
+        if (temperature := kwargs.get(ATTR_TEMPERATURE)) is not None:
+            operation = self._operation
+            mode = operation if operation in self._setpoints else HVACMode.HEAT
+            await self._async_write_setpoint(mode, temperature)
+        if (low := kwargs.get(ATTR_TARGET_TEMP_LOW)) is not None:
+            await self._async_write_setpoint(HVACMode.HEAT, low)
+        if (high := kwargs.get(ATTR_TARGET_TEMP_HIGH)) is not None:
+            await self._async_write_setpoint(HVACMode.COOL, high)
+        await self._async_done()
+
+
+class DaikinEKRHHClimate(_ZoneClimate):
+    """Main zone, controlled by either room or leaving water temperature."""
+
+    _attr_hvac_modes = [
+        HVACMode.OFF,
+        HVACMode.HEAT,
+        HVACMode.COOL,
+        HVACMode.HEAT_COOL,
+    ]
+
+    def __init__(self, device_name, hub, control) -> None:
+        """Initialize the climate entity."""
+        version = hub.altherma_version
+        setpoints = CLIMATE_REGISTERS[version][control]
+        super().__init__(
+            device_name,
+            hub,
+            CLIMATE_ENTITY[1],
+            _Setpoint(version, setpoints["heat"], setpoints.get("heat_limits")),
+            _Setpoint(version, setpoints["cool"], setpoints.get("cool_limits")),
+            setpoints["current"],
+        )
+
+    @property
+    def supported_features(self) -> ClimateEntityFeature:
+        return (
+            ClimateEntityFeature.TURN_ON
+            | ClimateEntityFeature.TURN_OFF
+            | self._temperature_feature
+        )
+
     async def _async_set_power(self, on: bool) -> None:
         await self._async_write(
             self._power_key, self._power_address, "INT16", 1 if on else 0
         )
-
-    async def _async_done(self) -> None:
-        self.async_write_ha_state()
-        await self.coordinator.async_request_refresh()
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Switch the zone off, or on in the given mode."""
@@ -192,16 +240,38 @@ class DaikinEKRHHClimate(DaikinEKRHHEntity, ClimateEntity):
         await self._async_set_power(False)
         await self._async_done()
 
-    async def async_set_temperature(self, **kwargs) -> None:
-        """Set the setpoint of the current mode, or both in Auto."""
-        if (hvac_mode := kwargs.get(ATTR_HVAC_MODE)) is not None:
-            await self.async_set_hvac_mode(hvac_mode)
-        if (temperature := kwargs.get(ATTR_TEMPERATURE)) is not None:
-            operation = self._operation
-            mode = operation if operation in self._setpoints else HVACMode.HEAT
-            await self._async_write_setpoint(mode, temperature)
-        if (low := kwargs.get(ATTR_TARGET_TEMP_LOW)) is not None:
-            await self._async_write_setpoint(HVACMode.HEAT, low)
-        if (high := kwargs.get(ATTR_TARGET_TEMP_HIGH)) is not None:
-            await self._async_write_setpoint(HVACMode.COOL, high)
-        await self._async_done()
+
+class DaikinEKRHHOffsetClimate(_ZoneClimate):
+    """Weather dependent leaving water setpoint offset of a zone.
+
+    Shows the unit's mode but leaves switching it to the main zone entity, so
+    adjusting an offset never turns space heating on or off.
+    """
+
+    def __init__(self, device_name, hub, entity) -> None:
+        """Initialize from an OFFSET_CLIMATE_* row."""
+        _, key, heat, cool = entity
+        version = hub.altherma_version
+        super().__init__(
+            device_name,
+            hub,
+            key,
+            _Setpoint(version, heat),
+            _Setpoint(version, cool),
+        )
+        self._attr_icon = "mdi:thermometer-plus"
+
+    @property
+    def hvac_modes(self) -> list[HVACMode]:
+        return [self.hvac_mode or HVACMode.OFF]
+
+    @property
+    def supported_features(self) -> ClimateEntityFeature:
+        return self._temperature_feature
+
+    async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
+        """Accept only the current mode; the main zone entity switches modes."""
+        if hvac_mode != self.hvac_mode:
+            raise HomeAssistantError(
+                "Change the mode on the main zone climate entity"
+            )

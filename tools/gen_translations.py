@@ -19,7 +19,8 @@ platforms = {
     "sensor": list(rows("ALTHERMA_3_INPUT", "ALTHERMA_3_INPUT_ADDITIONAL_ZONE",
                         "ALTHERMA_4_INPUT", "ALTHERMA_4_INPUT_ADDITIONAL_ZONE"))
               + [(v[0], v[1]) for v in ns["A2A_SENSOR_TYPES"].values()]
-              + [tuple(ns["FAULT_CODE_SENSOR"][:2])],
+              + [tuple(ns["FAULT_CODE_SENSOR"][:2])]
+              + list(rows("CALCULATED_SENSORS", name_i=0, key_i=1)),
     "binary_sensor": list(rows("ALTHERMA_3_INPUT_BINARY", "ALTHERMA_4_INPUT_BINARY",
                                "ALTHERMA_4_DISCRETE_INPUTS", "ALTHERMA_4_DISCRETE_INPUTS_ADDITIONAL_ZONE")),
     "number": list(rows("ALTHERMA_3_HOLDING", "ALTHERMA_3_HOLDING_ADDITIONAL_ZONE",
@@ -29,7 +30,8 @@ platforms = {
                         "ALTHERMA_4_HOLDING_SELECT", "ALTHERMA_4_HOLDING_SELECT_ADDITIONAL_ZONE"))
               + list(rows("DAIKIN_A2A_SELECT_TYPES", name_i=0, key_i=1)),
     "switch": list(rows("ALTHERMA_4_COILS", "ALTHERMA_4_COILS_ADDITIONAL_ZONE")),
-    "climate": [tuple(ns["CLIMATE_ENTITY"])],
+    "climate": [tuple(ns["CLIMATE_ENTITY"])]
+               + [tuple(ns[n][:2]) for n in ("OFFSET_CLIMATE_MAIN", "OFFSET_CLIMATE_ADDITIONAL")],
     "water_heater": [tuple(ns["WATER_HEATER_ENTITY"])],
 }
 
