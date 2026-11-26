@@ -1,10 +1,10 @@
 {
   "domain": "daikin_ha_ekrhh_modbus",
   "name": "Daikin Modbus",
+  "categories": ["climate.heat_pumps_air_conditioning"],
   "codeowners": ["@gerione"],
   "config_flow": true,
   "dependencies": ["modbus"],
-  "categories": ["climate.heat_pumps_air_conditioning"],
   "documentation": "https://github.com/gerione/daikin-ha-ekrhh-modbus",
   "integration_type": "device",
   "iot_class": "local_polling",
